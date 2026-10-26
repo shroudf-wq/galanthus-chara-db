@@ -1,0 +1,9 @@
+{
+  "name": "galanthus-chara-db",
+  "productName": "Galanthus",
+  "version": "1.0.2",
+  "description": "キャラのステータス・スキル・所持状況を管理するアプリ",
+  "main": "main.js",
+  "author": "shroudf-wq",
+  "license": "UNLICENSED"
+}

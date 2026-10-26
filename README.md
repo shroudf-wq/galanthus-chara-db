@@ -14,8 +14,16 @@
 - `sw.js` / `manifest.webmanifest` / `icons/` … オフライン対応とホーム画面用
 
 ## キャラデータの更新
-`data/chars.json` と `data/details.json` を差し替えるだけで、利用者の所持状況は残ったまま新しいデータに切り替わります。
-利用者が自分で編集した値は、そのキャラについては利用者の値が優先されます。
+1. `data/chars.json` と `data/details.json` を更新する
+2. `data/chars.json` の `rev` と `data/version.json` の `rev` を、同じ数字で1つ上げる（`updated` も更新）
+3. main ブランチに push する
+
+アプリ（Web版・Windows版とも）は起動時に `version.json` を GitHub から確認し、`rev` が新しければ最新データを取得して切り替えます。
+取得したデータは端末に保存されるので、次回からはオフラインでも最新データで起動します。
+利用者の所持状況・アイコン・自分で編集した値はそのまま残ります（編集した値は、そのキャラについては利用者の値が優先されます）。
+
+## Windows版
+`desktop/` にElectron用の `main.js` と `package.json` があります。`desktop/web/` にこのリポジトリの `index.html`（Service Worker登録を除いたもの）・`data/`・`icons/` を置いて、`@electron/packager` で `--platform=win32 --arch=x64` を指定してビルドします。
 
 ## データの出典
 ステータス等は「FLOWER KNIGHT GIRL Wiki*」（wikiwiki.jp/flower2ch）と「フラワーナイトガール攻略まとめwiki」（攻略wiki.com）の公開情報をもとにしています。

@@ -405,7 +405,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
         <p class="note">所持状況・作成済み・アイコン・自分で追加や編集した内容は、このブラウザの中にだけ保存されています。機種変更や別の端末で使うときは、ここで書き出したファイルを読み込んでください。ブラウザのデータを消すと失われるので、ときどき書き出しておくと安心です。</p>
         <div class="actions"><button class="primary" type="button" id="bk-export">バックアップを書き出す</button><label class="ghost" for="bk-file" style="display:inline-block">バックアップを読み込む<input type="file" id="bk-file" accept=".json,application/json" hidden></label></div>
         <div id="bk-msg" class="note" style="margin-top:8px"></div>
-        <div class="note" id="dataver"></div>
+        <div class="actions" style="margin-top:4px"><span class="note" id="dataver"></span><button class="ghost" type="button" id="dv-check">最新データを確認</button></div>
       </div>
       <form class="panel" id="addform" autocomplete="off">
         <h2>1体ずつ追加</h2>
@@ -1250,6 +1250,7 @@ $("reset").onclick = () => {
   ["f-own","f-made","f-grade"].forEach(id=>$(id).value="");
   limit=400; buildFilters(); render();
 };
+$("dv-check").onclick = () => checkRemote(true);
 $("wl-x").onclick = () => { $("welcome").hidden = true; try { localStorage.setItem("galanthus-welcome","x"); } catch(e){} };
 $("wl-go").onclick = () => { setView("add"); setTimeout(()=>$("backup").scrollIntoView({behavior:"smooth", block:"start"}), 50); };
 $("btn-more").onclick = () => { limit += 600; render(); };
@@ -1327,24 +1328,58 @@ $("bk-file").onchange = async e => {
   $("bk-msg").textContent = `読み込みました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${ic}枚）。`;
 };
 
+/* ---------- キャラデータの更新（GitHubから最新版を取得） ---------- */
+const REMOTE = "https://raw.githubusercontent.com/shroudf-wq/galanthus-chara-db/main/data/";
+let DATA_REV = 0, DATA_FROM = "";
+function applyMaster(cj, dj, from){
+  MASTER = new Map(cj.chars.map(c=>[c.n, c]));
+  DET = dj || {};
+  DATA_REV = cj.rev || 0; DATA_FROM = from;
+  $("dataver").textContent = `キャラデータ：${cj.updated || ""}時点・${cj.chars.length}体（${from}）`;
+}
+let checking = false;
+async function checkRemote(manual){
+  if (checking) return; checking = true;
+  const btn = $("dv-check"); if (manual && btn){ btn.disabled = true; btn.textContent = "確認中…"; }
+  try {
+    const v = await fetch(REMOTE + "version.json?t=" + Date.now(), {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); });
+    if ((v.rev||0) > DATA_REV){
+      const [cj, dj] = await Promise.all([
+        fetch(REMOTE + "chars.json?r=" + v.rev, {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
+        fetch(REMOTE + "details.json?r=" + v.rev, {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
+      ]);
+      if (!cj || !Array.isArray(cj.chars) || !cj.chars.length) throw 0;
+      const before = MASTER.size;
+      await idb.put("kv", "remoteData", {chars: cj, details: dj}).catch(()=>{});
+      applyMaster(cj, dj, "GitHubから取得");
+      onData();
+      const added = cj.chars.length - before;
+      toast(added > 0 ? `キャラデータを更新しました（新キャラ${added}体）` : "キャラデータを最新版に更新しました");
+    } else if (manual) toast("キャラデータは最新です");
+  } catch(e){ if (manual) toast("最新データを確認できませんでした。通信状況を確認してください"); }
+  finally { checking = false; if (btn){ btn.disabled = false; btn.textContent = "最新データを確認"; } }
+}
+
 (async () => {
   db = true;
   try {
-    const [cj, dj, saved, icons] = await Promise.all([
+    const [cj, dj, saved, icons, cached] = await Promise.all([
       fetch("data/chars.json", {cache:"no-cache"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
       fetch("data/details.json", {cache:"no-cache"}).then(r=>r.ok?r.json():{}).catch(()=>({})),
       idb.get("kv","user").catch(()=>null),
       idb.all("icons").catch(()=>({})),
+      idb.get("kv","remoteData").catch(()=>null),
     ]);
-    MASTER = new Map(cj.chars.map(c=>[c.n, c]));
-    DET = dj || {};
+    // 前回GitHubから取ってきたデータのほうが新しければ、そちらを使う
+    if (cached && cached.chars && (cached.chars.rev||0) > (cj.rev||0)) applyMaster(cached.chars, cached.details, "GitHubから取得");
+    else applyMaster(cj, dj, "アプリ同梱");
     if (saved) U = Object.assign({own:{}, made:{}, ov:{}, extra:{}, del:{}}, saved);
     for (const [n, b] of Object.entries(icons)) iconURL[n] = URL.createObjectURL(b);
-    $("dataver").textContent = `キャラデータ：${cj.updated || ""}時点・${cj.chars.length}体`;
   } catch(e){
     $("status").innerHTML = `<h2>データを読み込めませんでした</h2><div>通信状況を確認して、ページを再読み込みしてください。</div>`;
     return;
   }
+  setTimeout(() => checkRemote(false), 800);
   $("icpanel").hidden = false;
   renderUsage();
   onData();
