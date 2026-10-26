@@ -22,7 +22,7 @@
   --accent:#2f6b4a; --accent-soft:#dcebe1; --accent-fg:#ffffff;
   --danger:#b3412f; --danger-soft:#f6e1dc;
   --g-S:#1f6b46; --g-A:#3e8a52; --g-B:#7aa64a; --g-C:#b5b03c; --g-D:#c99636; --g-E:#c97a3a; --g-F:#b8624a; --g-G:#9a8f8a;
-  --at-slash:#c2453a; --at-blunt:#c98a1c; --at-pierce:#2f6fb3; --at-magic:#7b4fb0; --at-dream:#c25295;
+  --at-slash:#c2453a; --at-blunt:#2f6fb3; --at-pierce:#c98a1c; --at-magic:#7b4fb0; --at-dream:#c25295;
   --f-display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
   --r:8px;
@@ -33,7 +33,7 @@
   --accent:#7cc79a; --accent-soft:#213a2b; --accent-fg:#0d1a12;
   --danger:#ef8a76; --danger-soft:#3a201b;
   --g-S:#5fc48c; --g-A:#7cc06a; --g-B:#a6c25c; --g-C:#cfc65a; --g-D:#e0ad55; --g-E:#e39461; --g-F:#d98571; --g-G:#8d8682;
-  --at-slash:#f07a6e; --at-blunt:#e8b34f; --at-pierce:#6fa8e8; --at-magic:#ad8be0; --at-dream:#e88cc2;
+  --at-slash:#f07a6e; --at-blunt:#6fa8e8; --at-pierce:#e8b34f; --at-magic:#ad8be0; --at-dream:#e88cc2;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#121815; --surface:#19211c; --sunk:#0f1411; --line:#2a352e; --line-strong:#3c4a41;
@@ -41,7 +41,7 @@
   --accent:#7cc79a; --accent-soft:#213a2b; --accent-fg:#0d1a12;
   --danger:#ef8a76; --danger-soft:#3a201b;
   --g-S:#5fc48c; --g-A:#7cc06a; --g-B:#a6c25c; --g-C:#cfc65a; --g-D:#e0ad55; --g-E:#e39461; --g-F:#d98571; --g-G:#8d8682;
-  --at-slash:#f07a6e; --at-blunt:#e8b34f; --at-pierce:#6fa8e8; --at-magic:#ad8be0; --at-dream:#e88cc2;
+  --at-slash:#f07a6e; --at-blunt:#6fa8e8; --at-pierce:#e8b34f; --at-magic:#ad8be0; --at-dream:#e88cc2;
   color-scheme:dark}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
@@ -224,6 +224,63 @@ ul.res li.ng{color:var(--danger)}
 .zkcell.ng .st{color:var(--danger)}
 .confirm{background:var(--danger-soft);border-radius:6px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
 
+/* --- brush-up --- */
+.brand p{font-size:13px}
+.summary{align-items:flex-end}
+.own-rate{min-width:160px !important;align-items:stretch !important;gap:4px}
+.summary .or-top{display:flex;flex-direction:row;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.or-top span{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.or-top b{font-size:22px}
+.summary .or-bar{display:block;min-width:0;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.or-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+nav.tabs{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:4px}
+.toolbar{position:relative}
+.fpanel{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.fpanel[data-closed]{display:none}
+.fbtn{position:relative;display:inline-flex;align-items:center;gap:6px}
+.fbtn[aria-expanded="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:700}
+.badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-fg);font-size:11px;font-weight:700}
+.sortm{display:none;gap:4px}
+.sortm select{padding:5px 8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:var(--fg);font-size:13px}
+.count{font-size:12.5px;color:var(--muted)}
+.welcome{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--accent-soft);border-radius:var(--r);padding:12px 14px;font-size:13px}
+.wl-act{display:flex;gap:8px;flex-wrap:wrap}
+table.db tbody tr.missing td.name{color:inherit}
+table.db tbody tr.missing td.name .nmcell span:last-child{color:var(--muted)}
+.own{border:1px solid var(--line-strong);background:transparent;color:var(--faint);font-weight:500}
+.own.off{color:var(--faint);border-color:var(--line-strong)}
+.own.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:700}
+table.db tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--sunk) 45%, var(--surface))}
+table.db tbody tr:nth-child(even) td.name{background:color-mix(in srgb, var(--sunk) 45%, var(--surface))}
+table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--accent-soft)}
+/* mobile card list */
+.cards-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cards-list li{display:grid;grid-template-columns:48px 1fr auto;gap:4px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.cards-list li:active{background:var(--sunk)}
+.cards-list .ic{width:48px;height:48px;border-radius:9px;font-size:18px;grid-row:span 2}
+.cl-name{font-weight:700;font-size:14.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-name .no{color:var(--faint);font-weight:400;font-size:11.5px;margin-right:6px;font-variant-numeric:tabular-nums}
+.cl-meta{grid-column:2/4;display:flex;flex-wrap:wrap;gap:2px 8px;font-size:12px;color:var(--muted);align-items:center}
+.cl-meta .attr{width:auto}
+.cl-stats{grid-column:1/4;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:4px}
+.ms{display:flex;flex-direction:column;align-items:center;gap:1px;background:var(--sunk);border-radius:6px;padding:4px 2px;font-variant-numeric:tabular-nums}
+.ms small{font-size:10px;color:var(--muted);letter-spacing:.04em}
+.ms span{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700}
+.ms .g{width:16px;height:16px;font-size:10px}
+.cards-list .own{grid-row:1;grid-column:3;font-size:11.5px;padding:2px 10px;min-width:0}
+.cl-empty{text-align:center;color:var(--muted);padding:24px;background:var(--surface);border-radius:10px;cursor:default !important;display:block !important}
+@media (max-width:720px){
+  .tablebox{display:none}
+  .sortm{display:inline-flex}
+  .seg{order:5}
+  .search{flex-basis:100%}
+  .summary{width:100%;justify-content:space-between}
+  .own-rate{flex-basis:100%;min-width:0 !important}
+  .summary div:not(.own-rate){min-width:0;align-items:flex-start}
+  nav.tabs button{padding:8px 10px 9px}
+  #btn-csv{display:none}
+  .sheet{width:100%}
+}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:30;max-width:calc(100% - 32px)}
 
 @media (max-width:640px){
@@ -243,9 +300,10 @@ ul.res li.ng{color:var(--danger)}
   <header class="top">
     <div class="brand">
       <h1>Galanthus<small>キャラデータベース</small></h1>
-      <p>評価は全キャラ中のパーセントランク（S ≥ 0.9 / A ≥ 0.8 / B ≥ 0.7 / C ≥ 0.6 / D ≥ 0.5 / E ≥ 0.4 / F ≥ 0.2 / G）。追加・編集すると自動で再計算されます。所持状況・アイコン・編集内容はこの端末にだけ保存されます。</p>
+      <p>ステータス・スキル・アビリティと、自分の所持状況をまとめて管理</p>
     </div>
     <div class="summary" id="summary">
+      <div class="own-rate"><div class="or-top"><span>所持率</span><b id="s-rate">—</b></div><div class="or-bar"><i id="s-bar"></i></div></div>
       <div><b id="s-total">—</b><span>実装数</span></div>
       <div><b id="s-own">—</b><span>所持</span></div>
       <div class="miss"><b id="s-miss">—</b><span>未所持</span></div>
@@ -269,6 +327,10 @@ ul.res li.ng{color:var(--danger)}
   <!-- LIST -->
   <section id="view-list" hidden>
     <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="welcome" id="welcome" hidden>
+        <div><b>はじめに</b>　所持状況やアイコンはこの端末に保存されます。前のデータがあれば読み込めます。</div>
+        <div class="wl-act"><button class="primary" type="button" id="wl-go">バックアップを読み込む</button><button class="ghost" type="button" id="wl-x">閉じる</button></div>
+      </div>
       <div class="toolbar">
         <div class="trow">
           <div class="search"><input id="q" type="search" placeholder="名前で検索（例：リコ、夏の思い出）" autocomplete="off"></div>
@@ -278,8 +340,11 @@ ul.res li.ng{color:var(--danger)}
             <button id="m-rank" data-mode="rank" aria-pressed="false">順位</button>
             <button id="m-pct" data-mode="pct" aria-pressed="false">割合</button>
           </div>
-          <button class="ghost" id="reset">条件をクリア</button>
+          <div class="sortm"><select id="sortsel" aria-label="並べ替え"><option value="n">No.順</option><option value="tot">総合力</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="mv">移動力</option><option value="nm">名前</option><option value="y">実装年度</option></select><button class="ghost" type="button" id="sortdir" aria-label="並び順を反転">↓</button></div>
+          <button class="ghost fbtn" id="ftoggle" type="button" aria-expanded="false" aria-controls="fpanel">絞り込み<span class="badge" id="fcount" hidden></span></button>
+          <button class="ghost" id="reset">クリア</button>
         </div>
+        <div id="fpanel" class="fpanel">
         <div class="trow">
           <div class="group" id="f-attr"><span class="lbl">属性</span></div>
           <div class="group" id="f-nat"><span class="lbl">国</span></div>
@@ -293,9 +358,11 @@ ul.res li.ng{color:var(--danger)}
           <label class="sel">所持 <select id="f-own"><option value="">すべて</option><option value="1">所持</option><option value="0">未所持</option></select></label>
           <label class="sel">作成 <select id="f-made"><option value="">すべて</option><option value="1">作成済み</option><option value="0">未作成</option></select></label>
           <label class="sel">評価S以上 <select id="f-grade"><option value="">指定なし</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="mv">移動力</option><option value="tot">総合力</option></select></label>
-          <span class="count" id="count"></span>
         </div>
+        </div>
+        <div class="count" id="count"></div>
       </div>
+      <ul class="cards-list" id="cardlist" hidden></ul>
       <div class="tablebox" id="tablebox">
         <table class="db" id="tbl">
           <thead><tr id="thead"></tr></thead>
@@ -591,7 +658,15 @@ function render(){
   const k = sortKey, d = sortDir;
   rows.sort((a,b)=>{ const x=sortVal(a,k), y=sortVal(b,k); if (x===y) return a.n-b.n; if (typeof x==="string") return x.localeCompare(y,"ja")*d; return (x<y?-1:1)*d; });
   $("count").innerHTML = `<b>${rows.length}</b> / ${chars.length} 体`;
+  updateFilterBadge(); syncSortUI();
   const shown = rows.slice(0, limit);
+  if (MOBILE.matches){
+    $("tbody").innerHTML = ""; $("cardlist").hidden = false;
+    $("cardlist").innerHTML = (shown.length ? shown.map(cardHTML).join("") : `<li class="cl-empty">条件に合うキャラがいません。条件をゆるめてください。</li>`)
+      + (rows.length > limit ? `<li class="cl-empty"><button class="ghost" type="button" id="cl-more">さらに表示（残り${rows.length-limit}体）</button></li>` : "");
+    return;
+  }
+  $("cardlist").hidden = true; $("cardlist").innerHTML = "";
   $("tbody").innerHTML = shown.map(c => {
     const lim = c.src === "期間限定";
     return `<tr data-n="${c.n}" class="${c.own?"":"missing"}">
@@ -612,12 +687,47 @@ function render(){
   $("more").hidden = rows.length <= limit;
   if (!rows.length) $("tbody").innerHTML = `<tr><td colspan="${COLS.length}" style="text-align:center;padding:24px;color:var(--muted);cursor:default">条件に合うキャラがいません。条件をゆるめてください。</td></tr>`;
 }
+const MOBILE = matchMedia("(max-width: 720px)");
+MOBILE.addEventListener?.("change", () => render());
+function cardHTML(c){
+  const stat = (k,l) => { const m = mOf(c,k); const v = mode==="rank" ? m.rank+"位" : mode==="pct" ? Math.round(m.pct*100)+"%" : c[k];
+    return `<div class="ms"><small>${l}</small><span>${v}<i class="g ${m.grade}">${m.grade}</i></span></div>`; };
+  return `<li data-n="${c.n}">${iconHTML(c)}
+    <div class="cl-name"><span class="no">${c.n}</span>${esc(c.nm)}</div>
+    <button class="own ${c.own?"on":"off"}" data-act="own" aria-label="所持を切り替え">${c.own?"所持":"未所持"}</button>
+    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${c.y||""}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}</div>
+    <div class="cl-stats">${stat("hp","HP")}${stat("at","攻撃")}${stat("df","防御")}${stat("mv","移動")}${stat("tot","総合")}</div></li>`;
+}
+function activeFilterCount(){
+  let n = F.attr.size + F.nat.size + F.rar.size + F.tp.size;
+  for (const k of ["year","src","like","own","made","grade"]) if (F[k]) n++;
+  return n;
+}
+function updateFilterBadge(){ const n = activeFilterCount(); $("fcount").hidden = !n; $("fcount").textContent = n; }
+function setFilterOpen(open){ $("fpanel").toggleAttribute("data-closed", !open); $("ftoggle").setAttribute("aria-expanded", open); }
+$("ftoggle").onclick = () => setFilterOpen($("fpanel").hasAttribute("data-closed"));
+setFilterOpen(!MOBILE.matches);
+function syncSortUI(){
+  const sel = $("sortsel"); if ([...sel.options].some(o=>o.value===sortKey)) sel.value = sortKey;
+  $("sortdir").textContent = sortDir > 0 ? "↑" : "↓";
+}
+$("sortsel").onchange = e => { sortKey = e.target.value; sortDir = ["n","nm"].includes(sortKey) ? 1 : -1; savePrefs(); render(); };
+$("sortdir").onclick = () => { sortDir = -sortDir; savePrefs(); render(); };
+$("cardlist").addEventListener("click", async e => {
+  if (e.target.id === "cl-more"){ limit += 600; render(); return; }
+  const li = e.target.closest("li[data-n]"); if (!li) return;
+  const c = chars.find(x=>x.n===Number(li.dataset.n)); if (!c) return;
+  if (e.target.dataset.act === "own"){ e.stopPropagation(); try { await patchChar(c, {own: !c.own}); } catch(err){ writeError(err); } return; }
+  openSheet(c.n);
+});
 function renderSummary(){
   const own = chars.filter(c=>c.own).length;
   $("s-total").textContent = chars.length;
   $("s-own").textContent = own;
   $("s-miss").textContent = chars.length - own;
   $("s-made").textContent = chars.filter(c=>c.made).length;
+  const r = chars.length ? own/chars.length*100 : 0;
+  $("s-rate").textContent = r.toFixed(1) + "%"; $("s-bar").style.width = r.toFixed(2) + "%";
 }
 
 /* ---------- stats ---------- */
@@ -1140,6 +1250,8 @@ $("reset").onclick = () => {
   ["f-own","f-made","f-grade"].forEach(id=>$(id).value="");
   limit=400; buildFilters(); render();
 };
+$("wl-x").onclick = () => { $("welcome").hidden = true; try { localStorage.setItem("galanthus-welcome","x"); } catch(e){} };
+$("wl-go").onclick = () => { setView("add"); setTimeout(()=>$("backup").scrollIntoView({behavior:"smooth", block:"start"}), 50); };
 $("btn-more").onclick = () => { limit += 600; render(); };
 document.querySelectorAll("nav.tabs [role=tab]").forEach(b => b.onclick = () => setView(b.dataset.view));
 function setView(v){
@@ -1237,8 +1349,8 @@ $("bk-file").onchange = async e => {
   renderUsage();
   onData();
   if (!Object.keys(U.own).length && !Object.keys(U.made).length && !Object.keys(iconURL).length){
-    $("status").hidden = true;
-    toast("はじめに「登録・管理」タブで所持状況のバックアップを読み込めます");
+    let dismissed = false; try { dismissed = localStorage.getItem("galanthus-welcome") === "x"; } catch(e){}
+    $("welcome").hidden = dismissed;
   }
 })();
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
