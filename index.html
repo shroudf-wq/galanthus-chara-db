@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-tByDZX7ybG2T7fA4NUU0LyhOCI12lxU78Cdx8jVixD8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-MGUAIz5uuh3AhBfFBTZjpjmdswIPRaVolKLno2ypbts='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -255,6 +255,22 @@ table.db tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--sunk) 4
 table.db tbody tr:nth-child(even) td.name{background:color-mix(in srgb, var(--sunk) 45%, var(--surface))}
 table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--accent-soft)}
 /* mobile card list */
+.mem-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:10px}
+.mem-list > li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.mem-list > li.owned{border-color:var(--accent)}
+.mm-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.mm-name{font-weight:700;font-size:14.5px;line-height:1.35;min-width:0}
+.mm-name small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:2px}
+.mm-act{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.mm-act label{font-size:11.5px;color:var(--muted);display:flex;gap:4px;align-items:center;cursor:pointer;white-space:nowrap}
+.mm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.mm-stats div{background:var(--sunk);border-radius:6px;padding:3px 4px;text-align:center;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700}
+.mm-stats small{display:block;font-size:10px;color:var(--muted);font-weight:400}
+#mf-src{max-width:min(240px,62vw)}
+.sel{min-width:0;max-width:100%}
+.mm-ab{list-style:none;margin:0;padding:0;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+.mm-ab li{border-left:3px solid var(--accent-soft);padding-left:7px}
+.mm-empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:24px;background:var(--surface);border-radius:10px}
 .cards-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .cards-list li{display:grid;grid-template-columns:48px 1fr auto;gap:4px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
 .cards-list li:active{background:var(--sunk)}
@@ -315,6 +331,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
   <nav class="tabs" role="tablist">
     <button role="tab" id="tab-list" aria-selected="true" data-view="list">一覧</button>
     <button role="tab" id="tab-stats" aria-selected="false" data-view="stats">集計</button>
+    <button role="tab" id="tab-mem" aria-selected="false" data-view="mem">メモリー</button>
     <button role="tab" id="tab-add" aria-selected="false" data-view="add">登録・管理</button>
     <span class="spacer"></span>
         <button class="ghost" id="btn-csv">CSVで書き出し</button>
@@ -395,6 +412,29 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
         <h2>好きな物<small>属性別</small></h2>
         <div class="scroll"><table class="mini" id="t-like"></table></div>
       </div>
+    </div>
+  </section>
+
+  <!-- MEMORIES -->
+  <section id="view-mem" hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="toolbar">
+        <div class="trow">
+          <div class="search"><input id="mq" type="search" placeholder="名前・アビリティで検索（例：ソーラードライブ、被ダメージ低下）" autocomplete="off"></div>
+          <div class="seg" role="group" aria-label="表示する段階" id="mlv">
+            <button type="button" data-lv="max" aria-pressed="true">最大解放</button>
+            <button type="button" data-lv="lv1" aria-pressed="false">Lv1</button>
+          </div>
+          <div class="sortm" style="display:inline-flex"><select id="msort" aria-label="並べ替え"><option value="id">レア度順</option><option value="tot">総合力</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="nm">名前</option></select><button class="ghost" type="button" id="mdir" aria-label="並び順を反転">↓</button></div>
+        </div>
+        <div class="trow">
+          <div class="group" id="mf-r"><span class="lbl">★</span></div>
+          <label class="sel">所持 <select id="mf-own"><option value="">すべて</option><option value="1">所持</option><option value="0">未所持</option><option value="max">最大解放済み</option></select></label>
+          <label class="sel">入手 <select id="mf-src"></select></label>
+          <div class="count" id="mcount"></div>
+        </div>
+      </div>
+      <ul class="mem-list" id="memlist"></ul>
     </div>
   </section>
 
@@ -533,7 +573,7 @@ function sanitizeDet(d){
   const url = typeof d.url === "string" && URL_OK.test(d.url) ? d.url.slice(0, 500) : "";
   return {fl:vStr(d.fl,200), eq:vStr(d.eq,400), url, sk, ab};
 }
-function sanitizeMaster(cj, dj){
+function sanitizeMaster(cj, dj, mj){
   if (!cj || typeof cj !== "object" || !Array.isArray(cj.chars)) throw new Error("bad master");
   const seen = new Set(), list = [];
   for (const c of cj.chars.slice(0, 20000)){ const x = sanitizeChar(c); if (x && !seen.has(x.n)){ seen.add(x.n); list.push(x); } }
@@ -542,7 +582,21 @@ function sanitizeMaster(cj, dj){
   if (dj && typeof dj === "object" && !Array.isArray(dj))
     for (const [k, v] of Object.entries(dj)){ const n = vNum(k), x = sanitizeDet(v); if (isNo(n) && x) det[n] = x; }
   const rev = Number.isSafeInteger(cj.rev) && cj.rev >= 0 && cj.rev < 1e6 ? cj.rev : 0;
-  return {cj:{rev, updated:vStr(cj.updated, 20), chars:list}, dj:det};
+  const mem = sanitizeMem(mj && mj.list);
+  return {cj:{rev, updated:vStr(cj.updated, 20), chars:list}, dj:det, mem};
+}
+function sanitizeMem(list){
+  const out = [], seen = new Set();
+  if (!Array.isArray(list)) return out;
+  const st = s => s && typeof s === "object" ? {hp:vNum(s.hp), at:vNum(s.at), df:vNum(s.df), tot:vNum(s.tot)} : null;
+  const lines = a => Array.isArray(a) ? a.slice(0, 12).map(x => vStr(x, 400)).filter(Boolean) : [];
+  for (const m of list.slice(0, 5000)){
+    if (!m || typeof m !== "object") continue;
+    const id = vNum(m.id); const nm = vStr(m.nm, 80);
+    if (!isNo(id) || !nm || seen.has(id)) continue; seen.add(id);
+    out.push({id, nm, r:vStr(m.r, 4), lv1:st(m.lv1), max:st(m.max), ab:lines(m.ab), abMax:lines(m.abMax), src:vStr(m.src, 60)});
+  }
+  return out;
 }
 function noMap(x){
   const o = {}; const add = k => { const n = vNum(k); if (isNo(n)) o[n] = 1; };
@@ -551,9 +605,10 @@ function noMap(x){
   return o;
 }
 function sanitizeU(x){
-  const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
+  const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}};
   if (!x || typeof x !== "object" || Array.isArray(x)) return u;
   u.own = noMap(x.own); u.made = noMap(x.made); u.del = noMap(x.del);
+  u.mown = noMap(x.mown); u.mmax = noMap(x.mmax);
   if (x.ov && typeof x.ov === "object" && !Array.isArray(x.ov))
     for (const [k, v] of Object.entries(x.ov)){ const n = vNum(k), o = sanitizeChar(v, true); if (isNo(n) && o && Object.keys(o).length) u.ov[n] = o; }
   if (x.extra && typeof x.extra === "object" && !Array.isArray(x.extra))
@@ -563,7 +618,7 @@ function sanitizeU(x){
 
 /* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
 let MASTER = new Map();
-let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
+let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}};
 const iconURL = {};
 const USER_FIELDS = ["own","made","ic"];
 const idb = (() => {
@@ -763,7 +818,7 @@ function statCell(c,k){
   return `<span class="stat">${esc(v)}<span class="g ${m.grade}">${m.grade}</span></span>`;
 }
 function render(){
-  if (view !== "list") { if (view==="stats") renderStats(); return; }
+  if (view !== "list") { if (view==="stats") renderStats(); else if (view==="mem") renderMem(); return; }
   renderHead();
   let rows = chars.filter(matches);
   const k = sortKey, d = sortDir;
@@ -831,6 +886,82 @@ $("cardlist").addEventListener("click", async e => {
   if (e.target.dataset.act === "own"){ e.stopPropagation(); try { await patchChar(c, {own: !c.own}); } catch(err){ writeError(err); } return; }
   openSheet(c.n);
 });
+/* ---------- フラワーメモリー ---------- */
+let MEM = [];
+const MF = {q:"", r:new Set(), own:"", src:"", lv:"max", sort:"id", dir:1};
+try { const p = JSON.parse(localStorage.getItem("galanthus-mem")||"{}"); if (p.lv) MF.lv = p.lv; if (p.sort){ MF.sort = p.sort; MF.dir = p.dir||1; } } catch(e){}
+function saveMemPrefs(){ try { localStorage.setItem("galanthus-mem", JSON.stringify({lv:MF.lv, sort:MF.sort, dir:MF.dir})); } catch(e){} }
+const MRAR = ["★6","★5","★4","★3"];
+function memStats(m){ return (MF.lv === "max" && m.max) ? m.max : (m.lv1 || m.max || {}); }
+function memAb(m){ return (MF.lv === "max" && m.abMax.length) ? m.abMax : (m.ab.length ? m.ab : m.abMax); }
+function buildMemFilters(){
+  const el = $("mf-r"); el.querySelectorAll(".chip").forEach(n=>n.remove());
+  for (const r of MRAR.filter(r => MEM.some(m => m.r === r))){
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = r;
+    b.setAttribute("aria-pressed", MF.r.has(r));
+    b.onclick = () => { MF.r.has(r) ? MF.r.delete(r) : MF.r.add(r); b.setAttribute("aria-pressed", MF.r.has(r)); renderMem(); };
+    el.appendChild(b);
+  }
+  const srcs = [...new Set(MEM.map(m => m.src.replace(/\s*\d+(\.\d+)?%$/, "")).filter(Boolean))].sort();
+  const cur = MF.src;
+  $("mf-src").innerHTML = `<option value="">すべて</option>` + srcs.map(v => `<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
+}
+function renderMem(){
+  if (!MEM.length){ $("memlist").innerHTML = `<li class="mm-empty">フラワーメモリーのデータがまだありません。「登録・管理」の「最新データを確認」で取得できます。</li>`; $("mcount").textContent = ""; return; }
+  const words = MF.q ? MF.q.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  let list = MEM.filter(m => {
+    if (MF.r.size && !MF.r.has(m.r)) return false;
+    if (MF.own === "1" && !U.mown[m.id]) return false;
+    if (MF.own === "0" && U.mown[m.id]) return false;
+    if (MF.own === "max" && !U.mmax[m.id]) return false;
+    if (MF.src && !m.src.startsWith(MF.src)) return false;
+    if (words.length){ const t = (m.nm + "\n" + m.ab.join("\n") + "\n" + m.abMax.join("\n")).toLowerCase(); if (!words.every(w => t.includes(w))) return false; }
+    return true;
+  });
+  const k = MF.sort, d = MF.dir;
+  list.sort((a, b) => {
+    let x, y;
+    if (k === "nm"){ x = a.nm; y = b.nm; return x.localeCompare(y, "ja") * d; }
+    if (k === "id"){ const ra = MRAR.indexOf(a.r), rb = MRAR.indexOf(b.r); if (ra !== rb) return (ra - rb) * d; x = a.id; y = b.id; }
+    else { x = memStats(a)[k] ?? -1; y = memStats(b)[k] ?? -1; }
+    return x === y ? a.id - b.id : (x < y ? -1 : 1) * d;
+  });
+  const owned = Object.keys(U.mown).filter(id => MEM.some(m => m.id === Number(id))).length;
+  $("mcount").innerHTML = `<b>${list.length}</b> / ${MEM.length} 枚　所持 ${owned} 枚`;
+  $("msort").value = MF.sort; $("mdir").textContent = MF.dir > 0 ? "↑" : "↓";
+  document.querySelectorAll("#mlv button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lv === MF.lv));
+  const prev = F.qa; F.qa = MF.q.toLowerCase();
+  const html = list.slice(0, 400).map(m => {
+    const s = memStats(m), own = !!U.mown[m.id], mx = !!U.mmax[m.id];
+    return `<li data-id="${esc(m.id)}" class="${own ? "owned" : ""}">
+      <div class="mm-top"><div class="mm-name">${hl(m.nm)}<small>${esc(m.r)}・${esc(m.src)}</small></div>
+        <div class="mm-act"><button class="own ${own?"on":"off"}" type="button" data-act="mown">${own?"所持":"未所持"}</button>
+          <label><input type="checkbox" class="mk" data-act="mmax" ${mx?"checked":""}${m.max?"":" disabled"}> 最大解放</label></div></div>
+      <div class="mm-stats"><div><small>HP</small>${esc(s.hp ?? "—")}</div><div><small>攻撃</small>${esc(s.at ?? "—")}</div><div><small>防御</small>${esc(s.df ?? "—")}</div><div><small>総合</small>${esc(s.tot ?? "—")}</div></div>
+      <ul class="mm-ab">${memAb(m).map(x => `<li>${hl(x)}</li>`).join("")}</ul></li>`;
+  }).join("");
+  F.qa = prev;
+  $("memlist").innerHTML = html || `<li class="mm-empty">条件に合うメモリーがありません。条件をゆるめてください。</li>`;
+}
+$("memlist").addEventListener("click", async e => {
+  const li = e.target.closest("li[data-id]"); if (!li) return;
+  const id = Number(li.dataset.id), act = e.target.dataset.act; if (!act || !isNo(id)) return;
+  const val = act === "mown" ? !U.mown[id] : e.target.checked;
+  try {
+    await mutate(() => {
+      U.mown ||= {}; U.mmax ||= {};
+      if (act === "mown"){ if (val) U.mown[id] = 1; else { delete U.mown[id]; delete U.mmax[id]; } }
+      else { if (val){ U.mmax[id] = 1; U.mown[id] = 1; } else delete U.mmax[id]; }
+    });
+  } catch(err){ writeError(err); }
+});
+let mqt; $("mq").addEventListener("input", e => { clearTimeout(mqt); mqt = setTimeout(() => { MF.q = e.target.value.trim(); renderMem(); }, 150); });
+$("mf-own").onchange = e => { MF.own = e.target.value; renderMem(); };
+$("mf-src").onchange = e => { MF.src = e.target.value; renderMem(); };
+$("msort").onchange = e => { MF.sort = e.target.value; MF.dir = ["id","nm"].includes(MF.sort) ? 1 : -1; saveMemPrefs(); renderMem(); };
+$("mdir").onclick = () => { MF.dir = -MF.dir; saveMemPrefs(); renderMem(); };
+document.querySelectorAll("#mlv button").forEach(b => b.onclick = () => { MF.lv = b.dataset.lv; saveMemPrefs(); renderMem(); });
+
 function renderSummary(){
   const own = chars.filter(c=>c.own).length;
   $("s-total").textContent = chars.length;
@@ -1391,6 +1522,7 @@ function setView(v){
 function showPanels(hasData){
   $("view-list").hidden = !(hasData && view==="list");
   $("view-stats").hidden = !(hasData && view==="stats");
+  $("view-mem").hidden = !(hasData && view==="mem");
   $("view-add").hidden = !(view==="add" && db && canWrite);
   $("status").hidden = hasData || (view==="add" && db && canWrite);
 }
@@ -1439,13 +1571,14 @@ $("bk-export").onclick = async () => {
   // 自分の記録だけを書き出す（マスターの値は含めないので、後でマスターが直っても古い値で上書きしない）
   const data = {app:"galanthus", v:2, rev:DATA_REV, exportedAt:new Date().toISOString(),
     own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number), del: Object.keys(U.del).map(Number),
+    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number),
     ov: U.ov, extra: U.extra, icons};
   downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
   $("bk-msg").textContent = `書き出しました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(icons).length}枚）。`;
 };
 function parseBackup(data){
   if (!data || typeof data !== "object" || data.app !== "galanthus") throw new Error("not galanthus");
-  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}};
+  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax)};
   if (data.ov || data.extra){ const x = sanitizeU(data); nu.ov = x.ov; nu.extra = x.extra; }
   else if (Array.isArray(data.chars)){
     // 古い形式（全キャラ入り）：マスターで空欄の項目だけ補い、マスターの値は上書きしない
@@ -1497,6 +1630,7 @@ $("bk-file").onchange = async e => {
 const REMOTE = "https://raw.githubusercontent.com/shroudf-wq/galanthus-chara-db/main/data/";
 let DATA_REV = 0, DATA_FROM = "", BUNDLED = null;
 function applyMaster(m, from){
+  if (m.mem && m.mem.length) { MEM = m.mem; buildMemFilters(); }
   MASTER = new Map(m.cj.chars.map(c=>[c.n, c]));
   DET = m.dj || {};
   DATA_REV = m.cj.rev; DATA_FROM = from;
@@ -1518,13 +1652,14 @@ async function checkRemote(manual){
       else if (manual) toast("キャラデータは最新です");
       return;
     }
-    const [c, d] = await Promise.all([getJSON(REMOTE + "chars.json?r=" + rev), getJSON(REMOTE + "details.json?r=" + rev)]);
-    const m = sanitizeMaster(c, d);                       // 検証してから
+    const [c, d, mj] = await Promise.all([getJSON(REMOTE + "chars.json?r=" + rev), getJSON(REMOTE + "details.json?r=" + rev), getJSON(REMOTE + "memories.json?r=" + rev).catch(() => null)]);
+    const m = sanitizeMaster(c, d, mj);                   // 検証してから
+    if (!m.mem.length) m.mem = MEM;
     if (m.cj.rev !== rev) throw new Error("rev mismatch");
     if (MASTER.size && m.cj.chars.length < MASTER.size * 0.8) throw new Error("too few characters");
     const before = MASTER.size;
     applyMaster(m, "GitHubから取得");                      // 画面に反映し
-    await idb.put("kv", "remoteData", {chars: m.cj, details: m.dj}).catch(()=>{});   // 問題がなければ保存
+    await idb.put("kv", "remoteData", {chars: m.cj, details: m.dj, memories: {list: m.mem}}).catch(()=>{});   // 問題がなければ保存
     await reconcileExtras();
     onData();
     const added = m.cj.chars.length - before;
@@ -1535,15 +1670,16 @@ async function checkRemote(manual){
 
 (async () => {
   db = true;
-  const [c, d, saved, cached] = await Promise.all([
+  const [c, d, saved, cached, mj] = await Promise.all([
     getJSON("data/chars.json").catch(()=>null),
     getJSON("data/details.json").catch(()=>({})),
     idb.get("kv","user").catch(()=>null),
     idb.get("kv","remoteData").catch(()=>null),
+    getJSON("data/memories.json").catch(()=>null),
   ]);
-  try { if (c) BUNDLED = sanitizeMaster(c, d); } catch(e){ BUNDLED = null; }
+  try { if (c) BUNDLED = sanitizeMaster(c, d, mj); } catch(e){ BUNDLED = null; }
   let remote = null;
-  try { if (cached) remote = sanitizeMaster(cached.chars, cached.details); } catch(e){ idb.del("kv","remoteData").catch(()=>{}); }
+  try { if (cached){ remote = sanitizeMaster(cached.chars, cached.details, cached.memories); if (!remote.mem.length && BUNDLED) remote.mem = BUNDLED.mem; } } catch(e){ idb.del("kv","remoteData").catch(()=>{}); }
   if (remote && (!BUNDLED || remote.cj.rev > BUNDLED.cj.rev)) applyMaster(remote, "GitHubから取得");
   else if (BUNDLED) applyMaster(BUNDLED, "アプリ同梱");
   U = sanitizeU(saved);
@@ -1557,7 +1693,7 @@ async function checkRemote(manual){
   $("icpanel").hidden = false;
   renderUsage();
   onData();
-  if (!Object.keys(U.own).length && !Object.keys(U.made).length && !Object.keys(iconURL).length){
+  if (!Object.keys(U.own).length && !Object.keys(U.made).length && !Object.keys(U.mown).length && !Object.keys(iconURL).length){
     let dismissed = false; try { dismissed = localStorage.getItem("galanthus-welcome") === "x"; } catch(e){}
     $("welcome").hidden = dismissed;
   }

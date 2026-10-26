@@ -1,6 +1,6 @@
 // アプリ本体はキャッシュ優先、キャラデータは通信優先（更新をすぐ反映し、圏外ではキャッシュを使う）
-const CACHE = "galanthus-v6";
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "data/chars.json", "data/details.json"];
+const CACHE = "galanthus-v7";
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "data/chars.json", "data/details.json", "data/memories.json", "data/version.json"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {

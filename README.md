@@ -11,10 +11,11 @@
 - `index.html` … アプリ本体
 - `data/chars.json` … キャラの基本データ（`updated` に更新日）
 - `data/details.json` … スキル・アビリティなど（キーはNo.）
+- `data/memories.json` … フラワーメモリー（`id` は所持記録のキーなので、既存の `id` は変えずに新しいものを末尾に追加する）
 - `sw.js` / `manifest.webmanifest` / `icons/` … オフライン対応とホーム画面用
 
 ## キャラデータの更新
-1. `data/chars.json` と `data/details.json` を更新する
+1. `data/chars.json`・`data/details.json`・`data/memories.json` を更新する
 2. `data/chars.json` の `rev` と `data/version.json` の `rev` を、同じ数字で1つ上げる（`updated` も更新）
 3. main ブランチに push する
 
@@ -26,5 +27,5 @@
 `desktop/` にElectron用の `main.js` と `package.json` があります。`desktop/web/` にこのリポジトリの `index.html`（Service Worker登録を除いたもの）・`data/`・`icons/` を置いて、`@electron/packager` で `--platform=win32 --arch=x64` を指定してビルドします。
 
 ## データの出典
-ステータス等は「FLOWER KNIGHT GIRL Wiki*」（wikiwiki.jp/flower2ch）と「フラワーナイトガール攻略まとめwiki」（攻略wiki.com）の公開情報をもとにしています。
+ステータス等とフラワーメモリーは「FLOWER KNIGHT GIRL Wiki*」（wikiwiki.jp/flower2ch）と「フラワーナイトガール攻略まとめwiki」（攻略wiki.com）の公開情報をもとにしています。
 キャラの画像は含みません（アイコンは各利用者が自分のスクショから端末内に登録します）。
