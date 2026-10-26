@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-tByDZX7ybG2T7fA4NUU0LyhOCI12lxU78Cdx8jVixD8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -458,8 +459,8 @@ const STAGE_RANK = s => /昇華.*開花/.test(s) ? 6 : /^(レアリティ)?昇�
 let DET = {};              // No. -> スキル・アビリティなど
 function detOf(c){ return DET[String(c.n)] || null; }
 function stagesOf(det){
-  if (!det || !det.ab) return [];
-  return Object.entries(det.ab).filter(([,l]) => l && l.length && !l.every(x => /^(効果\d|なし)$/.test(x))).sort((a,b)=>STAGE_RANK(b[0])-STAGE_RANK(a[0]));
+  if (!det || !det.ab || typeof det.ab !== "object") return [];
+  return Object.entries(det.ab).filter(([,l]) => Array.isArray(l) && l.length && !l.every(x => /^(効果\d|なし)$/.test(x))).sort((a,b)=>STAGE_RANK(b[0])-STAGE_RANK(a[0]));
 }
 function searchText(c){
   if (c._st !== undefined) return c._st;
@@ -506,6 +507,60 @@ function measure(k, v, arr = calc[k]){
 }
 function mOf(c, k){ c._m = c._m || {}; return c._m[k] || (c._m[k] = measure(k, c[k])); }
 
+/* ---------- 入力の検証：外から来るデータ（GitHub・バックアップ・保存済みデータ）は必ずここを通す ---------- */
+const STR_MAX = {a:4, k:12, nm:80, r:4, src:40, like:20, tp:20, sp:40, srcD:200};
+const NUM_KEYS = ["hp","at","df","mv","tot"];
+const isNo = n => Number.isSafeInteger(n) && n > 0 && n < 1e7;
+function vStr(v, max){ return typeof v === "string" ? v.slice(0, max) : (typeof v === "number" && Number.isFinite(v) ? String(v).slice(0, max) : ""); }
+function vNum(v){ const x = typeof v === "number" ? v : (typeof v === "string" && v.trim() !== "" ? Number(v) : NaN); return Number.isFinite(x) && Math.abs(x) < 1e8 ? Math.round(x) : null; }
+function sanitizeChar(c, partial){
+  if (!c || typeof c !== "object" || Array.isArray(c)) return null;
+  const o = {};
+  if (!partial){ const n = vNum(c.n); if (!isNo(n)) return null; o.n = n; }
+  for (const [k, max] of Object.entries(STR_MAX)) if (!partial || Object.prototype.hasOwnProperty.call(c, k)) o[k] = vStr(c[k], max);
+  for (const k of NUM_KEYS) if (!partial || Object.prototype.hasOwnProperty.call(c, k)) o[k] = vNum(c[k]);
+  if (!partial || Object.prototype.hasOwnProperty.call(c, "y")){ const y = vNum(c.y); o.y = y && y >= 2000 && y <= 2100 ? y : null; }
+  if (!partial && !o.nm) return null;
+  return o;
+}
+const URL_OK = /^https:\/\/(xn--eckq7fg8cygsa1a1je\.xn--wiki-4i9hs14f\.com|wikiwiki\.jp)\//;
+function sanitizeDet(d){
+  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+  const sk = Array.isArray(d.sk) ? d.sk.slice(0, 8).filter(x => x && typeof x === "object").map(x => ({n:vStr(x.n,80), r:vStr(x.r,60), d:vStr(x.d,400), l:vStr(x.l,20)})) : [];
+  const ab = {};
+  if (d.ab && typeof d.ab === "object" && !Array.isArray(d.ab))
+    for (const [k, l] of Object.entries(d.ab).slice(0, 24)) if (Array.isArray(l)) ab[vStr(k,24)] = l.slice(0, 40).map(x => vStr(x, 400));
+  const url = typeof d.url === "string" && URL_OK.test(d.url) ? d.url.slice(0, 500) : "";
+  return {fl:vStr(d.fl,200), eq:vStr(d.eq,400), url, sk, ab};
+}
+function sanitizeMaster(cj, dj){
+  if (!cj || typeof cj !== "object" || !Array.isArray(cj.chars)) throw new Error("bad master");
+  const seen = new Set(), list = [];
+  for (const c of cj.chars.slice(0, 20000)){ const x = sanitizeChar(c); if (x && !seen.has(x.n)){ seen.add(x.n); list.push(x); } }
+  if (!list.length) throw new Error("empty master");
+  const det = {};
+  if (dj && typeof dj === "object" && !Array.isArray(dj))
+    for (const [k, v] of Object.entries(dj)){ const n = vNum(k), x = sanitizeDet(v); if (isNo(n) && x) det[n] = x; }
+  const rev = Number.isSafeInteger(cj.rev) && cj.rev >= 0 && cj.rev < 1e6 ? cj.rev : 0;
+  return {cj:{rev, updated:vStr(cj.updated, 20), chars:list}, dj:det};
+}
+function noMap(x){
+  const o = {}; const add = k => { const n = vNum(k); if (isNo(n)) o[n] = 1; };
+  if (Array.isArray(x)) x.slice(0, 50000).forEach(add);
+  else if (x && typeof x === "object") Object.keys(x).slice(0, 50000).forEach(k => { if (x[k]) add(k); });
+  return o;
+}
+function sanitizeU(x){
+  const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
+  if (!x || typeof x !== "object" || Array.isArray(x)) return u;
+  u.own = noMap(x.own); u.made = noMap(x.made); u.del = noMap(x.del);
+  if (x.ov && typeof x.ov === "object" && !Array.isArray(x.ov))
+    for (const [k, v] of Object.entries(x.ov)){ const n = vNum(k), o = sanitizeChar(v, true); if (isNo(n) && o && Object.keys(o).length) u.ov[n] = o; }
+  if (x.extra && typeof x.extra === "object" && !Array.isArray(x.extra))
+    for (const v of Object.values(x.extra)){ const o = sanitizeChar(v); if (o) u.extra[o.n] = o; }
+  return u;
+}
+
 /* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
 let MASTER = new Map();
 let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
@@ -529,12 +584,34 @@ const idb = (() => {
       const t = d.transaction(store, "readonly"), st = t.objectStore(store), out = {};
       const cur = st.openCursor(); cur.onsuccess = () => { const c = cur.result; if (c){ out[c.key] = c.value; c.continue(); } else res(out); }; cur.onerror = () => rej(cur.error); }); },
     clear: store => tx(store, "readwrite", st => st.clear()),
+    replaceUserAndIcons: async (user, icons) => { const d = await open(); return new Promise((res, rej) => {
+      const t = d.transaction(["kv","icons"], "readwrite"); const ic = t.objectStore("icons");
+      t.objectStore("kv").put(user, "user"); ic.clear(); for (const [n, b] of icons) ic.put(b, n);
+      t.oncomplete = () => res(); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); },
   };
 })();
 let persistAsked = false;
-async function saveUser(){
-  await idb.put("kv", "user", U);
+const BC = ("BroadcastChannel" in self) ? new BroadcastChannel("galanthus") : null;
+async function reloadIcons(){
+  const all = await idb.all("icons").catch(()=>({}));
+  for (const k of Object.keys(iconURL)){ URL.revokeObjectURL(iconURL[k]); delete iconURL[k]; }
+  for (const [n, b] of Object.entries(all)) if (b instanceof Blob) iconURL[n] = URL.createObjectURL(b);
+}
+if (BC) BC.onmessage = async e => {
+  if (e.data === "user"){ U = sanitizeU(await idb.get("kv","user").catch(()=>null)); onData(); }
+  else if (e.data === "icons"){ await reloadIcons(); onData(); renderUsage(); }
+};
+// 他のタブで変わっていても上書きしないよう、毎回保存済みの最新を読み直してから変更を当てる
+async function mutate(fn){
+  const run = async () => {
+    try { const fresh = await idb.get("kv","user"); if (fresh) U = sanitizeU(fresh); } catch(e){}
+    fn();
+    await idb.put("kv", "user", U);
+  };
+  if (navigator.locks?.request) await navigator.locks.request("galanthus-user", run); else await run();
+  BC?.postMessage("user");
   if (!persistAsked && navigator.storage?.persist){ persistAsked = true; navigator.storage.persist().catch(()=>{}); }
+  onData();
 }
 function rebuild(){
   const list = [];
@@ -546,38 +623,72 @@ function rebuild(){
   buildFilters(); renderSummary(); render();
 }
 function stripUser(c){ const o = clean(c); for (const k of USER_FIELDS) delete o[k]; return o; }
-function applyRecord(rec){
-  const n = rec.n, m = MASTER.get(n);
+// 編集した項目だけを上書きとして持つ（マスターと同じ値になった項目は消す）
+function applyPatch(n, patch){
+  const p = sanitizeChar(patch, true) || {};
+  const m = MASTER.get(n);
   if (m){
-    const diff = {};
-    for (const [k,v] of Object.entries(rec)) if (k !== "n" && JSON.stringify(m[k] ?? "") !== JSON.stringify(v ?? "")) diff[k] = v;
-    if (Object.keys(diff).length) U.ov[n] = diff; else delete U.ov[n];
+    const ov = {...(U.ov[n]||{}), ...p};
+    for (const k of Object.keys(ov)) if (JSON.stringify(m[k] ?? "") === JSON.stringify(ov[k] ?? "")) delete ov[k];
+    if (Object.keys(ov).length) U.ov[n] = ov; else delete U.ov[n];
     delete U.del[n];
-  } else U.extra[n] = rec;
-}
-async function commit(){ await saveUser(); onData(); }
-async function writeChars(list){
-  for (const c of list){
-    applyRecord(stripUser(c));
-    if (c.own) U.own[c.n] = 1; else delete U.own[c.n];
-    if (c.made) U.made[c.n] = 1; else delete U.made[c.n];
+  } else {
+    const base = U.extra[n] || {n};
+    const x = sanitizeChar({...base, ...p, n});
+    if (x) U.extra[n] = x;
   }
-  await commit();
+}
+async function writeChars(list){
+  await mutate(() => {
+    for (const c of list){
+      const rec = stripUser(c); delete rec.n;
+      applyPatch(c.n, rec);
+      if (c.own) U.own[c.n] = 1; else delete U.own[c.n];
+      if (c.made) U.made[c.n] = 1; else delete U.made[c.n];
+    }
+  });
 }
 async function patchChar(c, patch){
-  const rest = {};
-  for (const [k,v] of Object.entries(patch)){
-    if (k === "own" || k === "made"){ if (v) U[k][c.n] = 1; else delete U[k][c.n]; }
-    else if (k !== "ic") rest[k] = v;
-  }
-  if (Object.keys(rest).length) applyRecord({...stripUser(c), ...rest});
-  await commit();
+  await mutate(() => {
+    const rest = {};
+    for (const [k,v] of Object.entries(patch)){
+      if (k === "own" || k === "made"){ if (v) U[k][c.n] = 1; else delete U[k][c.n]; }
+      else if (k !== "ic" && k !== "n") rest[k] = v;
+    }
+    if (Object.keys(rest).length) applyPatch(c.n, rest);
+  });
 }
 async function deleteChar(c){
-  if (MASTER.has(c.n)) U.del[c.n] = 1; else delete U.extra[c.n];
-  delete U.own[c.n]; delete U.made[c.n]; delete U.ov[c.n];
   await removeIcon(c.n);
-  await commit();
+  await mutate(() => {
+    if (MASTER.has(c.n)) U.del[c.n] = 1; else delete U.extra[c.n];
+    delete U.own[c.n]; delete U.made[c.n]; delete U.ov[c.n];
+  });
+}
+// マスター更新で番号がぶつかった自作キャラを守る：同名なら公式側へ引き継ぎ、別キャラなら番号を空いている所へ移す
+async function reconcileExtras(){
+  const keys = Object.keys(U.extra).map(Number).filter(n => MASTER.has(n) || [...MASTER.values()].some(m => normName(m.nm) === normName(U.extra[n].nm)));
+  if (!keys.length) return;
+  const byName = new Map([...MASTER.values()].map(m => [normName(m.nm), m.n]));
+  const moves = [];
+  await mutate(() => {
+    let free = Math.max(900000, ...Object.keys(U.extra).map(Number));
+    for (const n of Object.keys(U.extra).map(Number)){
+      const e = U.extra[n]; const same = byName.get(normName(e.nm));
+      let to = null;
+      if (same != null) to = same;
+      else if (MASTER.has(n)) to = ++free;
+      if (to == null || to === n) continue;
+      if (same == null) U.extra[to] = {...e, n: to};
+      delete U.extra[n];
+      for (const k of ["own","made"]) if (U[k][n]){ if (same == null || !U[k][to]) U[k][to] = 1; if (same == null || to !== n) delete U[k][n]; }
+      moves.push([n, to]);
+    }
+  });
+  for (const [from, to] of moves){
+    try { const b = await idb.get("icons", from); if (b && !(await idb.get("icons", to))) await idb.put("icons", to, b); if (b) await idb.del("icons", from); } catch(e){}
+  }
+  if (moves.length){ await reloadIcons(); BC?.postMessage("icons"); onData(); }
 }
 function clean(c){
   const o = {n:c.n,a:c.a,k:c.k,nm:c.nm,r:c.r,hp:c.hp,at:c.at,df:c.df,mv:c.mv,tot:c.tot,y:c.y,own:!!c.own,src:c.src||"",like:c.like||"",made:!!c.made};
@@ -649,7 +760,7 @@ function sortVal(c,k){
 function statCell(c,k){
   const m = mOf(c,k);
   const v = mode==="rank" ? m.rank : mode==="pct" ? (m.pct*100).toFixed(1)+"%" : c[k];
-  return `<span class="stat">${v}<span class="g ${m.grade}">${m.grade}</span></span>`;
+  return `<span class="stat">${esc(v)}<span class="g ${m.grade}">${m.grade}</span></span>`;
 }
 function render(){
   if (view !== "list") { if (view==="stats") renderStats(); return; }
@@ -669,15 +780,15 @@ function render(){
   $("cardlist").hidden = true; $("cardlist").innerHTML = "";
   $("tbody").innerHTML = shown.map(c => {
     const lim = c.src === "期間限定";
-    return `<tr data-n="${c.n}" class="${c.own?"":"missing"}">
-      <td class="no r">${c.n}</td>
+    return `<tr data-n="${esc(c.n)}" class="${c.own?"":"missing"}">
+      <td class="no r">${esc(c.n)}</td>
       <td><span class="attr ${esc(c.a)}">${esc(c.a)}</span></td>
       <td>${esc(c.k)}</td>
       <td class="name" title="${esc(c.nm)}"><span class="nmcell">${iconHTML(c)}<span>${esc(c.nm)}</span></span></td>
       <td class="rar">${esc(c.r)}</td>
       <td class="tp">${esc(c.tp||"")}</td>
       <td class="r">${statCell(c,"hp")}</td><td class="r">${statCell(c,"at")}</td><td class="r">${statCell(c,"df")}</td><td class="r">${statCell(c,"mv")}</td><td class="r">${statCell(c,"tot")}</td>
-      <td class="r num">${c.y||""}</td>
+      <td class="r num">${esc(c.y||"")}</td>
       <td>${c.src?`<span class="tag${lim?" lim":""}">${esc(c.src)}</span>`:""}</td>
       <td>${esc(c.like)}</td>
       <td><button class="own ${c.own?"on":"off"}" data-act="own" ${canWrite?"":"disabled"} aria-label="所持を切り替え">${c.own?"所持":"未所持"}</button></td>
@@ -691,11 +802,11 @@ const MOBILE = matchMedia("(max-width: 720px)");
 MOBILE.addEventListener?.("change", () => render());
 function cardHTML(c){
   const stat = (k,l) => { const m = mOf(c,k); const v = mode==="rank" ? m.rank+"位" : mode==="pct" ? Math.round(m.pct*100)+"%" : c[k];
-    return `<div class="ms"><small>${l}</small><span>${v}<i class="g ${m.grade}">${m.grade}</i></span></div>`; };
-  return `<li data-n="${c.n}">${iconHTML(c)}
-    <div class="cl-name"><span class="no">${c.n}</span>${esc(c.nm)}</div>
+    return `<div class="ms"><small>${l}</small><span>${esc(v)}<i class="g ${m.grade}">${m.grade}</i></span></div>`; };
+  return `<li data-n="${esc(c.n)}">${iconHTML(c)}
+    <div class="cl-name"><span class="no">${esc(c.n)}</span>${esc(c.nm)}</div>
     <button class="own ${c.own?"on":"off"}" data-act="own" aria-label="所持を切り替え">${c.own?"所持":"未所持"}</button>
-    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${c.y||""}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}</div>
+    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${esc(c.y||"")}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}</div>
     <div class="cl-stats">${stat("hp","HP")}${stat("at","攻撃")}${stat("df","防御")}${stat("mv","移動")}${stat("tot","総合")}</div></li>`;
 }
 function activeFilterCount(){
@@ -740,7 +851,7 @@ function renderStats(){
     const miss = list.filter(c=>!c.own), l = miss.filter(c=>c.src==="期間限定").length, rp = miss.length - l;
     T.n+=list.length; T.o+=o; T.l+=l; T.rp+=rp;
     const w = v => (v/maxN*100).toFixed(2)+"%";
-    rows += `<tr><td>${y}</td><td>${list.length}</td><td>${o}</td><td class="${miss.length?"":"zero"}">${miss.length}</td><td class="${l?"":"zero"}">${l}</td><td class="${rp?"":"zero"}">${rp}</td>
+    rows += `<tr><td>${esc(y)}</td><td>${list.length}</td><td>${o}</td><td class="${miss.length?"":"zero"}">${miss.length}</td><td class="${l?"":"zero"}">${l}</td><td class="${rp?"":"zero"}">${rp}</td>
       <td class="barcell"><div class="bar"><i class="o" style="width:${w(o)}"></i><i class="l" style="width:${w(l)}"></i><i class="rp" style="width:${w(rp)}"></i></div></td></tr>`;
   }
   $("t-year").innerHTML = `<thead><tr><th>年度</th><th>実装</th><th>所持</th><th>未所持</th><th>うち期間限定</th><th>再入手可能</th><th></th></tr></thead><tbody>${rows}
@@ -775,13 +886,13 @@ function fieldsHTML(prefix, c){
   <div class="field"><label for="${prefix}-k">国</label><input id="${prefix}-k" list="dl-nat" value="${esc(c.k||"")}" required></div>
   ${fixed ? `<div class="field"><label>★</label><div class="fixed">${esc(c.r)}</div><input type="hidden" id="${prefix}-r" value="${esc(c.r)}"></div>`
           : `<div class="field"><label for="${prefix}-r">★</label><select id="${prefix}-r">${opt(RARS,c.r||"★6")}</select></div>`}
-  <div class="field"><label for="${prefix}-tp">タイプ</label><select id="${prefix}-tp"><option value="">未設定</option>${opt(TYPES,c.tp||"")}</select></div>
-  <div class="field"><label for="${prefix}-y">実装年度</label><input id="${prefix}-y" type="number" inputmode="numeric" value="${c.y||new Date().getFullYear()}"></div>
-  <div class="field"><label for="${prefix}-hp">HP</label><input id="${prefix}-hp" type="number" inputmode="numeric" required value="${c.hp??""}"></div>
-  <div class="field"><label for="${prefix}-at">攻撃力</label><input id="${prefix}-at" type="number" inputmode="numeric" required value="${c.at??""}"></div>
-  <div class="field"><label for="${prefix}-df">防御力</label><input id="${prefix}-df" type="number" inputmode="numeric" required value="${c.df??""}"></div>
-  <div class="field"><label for="${prefix}-mv">移動力</label><input id="${prefix}-mv" type="number" inputmode="numeric" required value="${c.mv??""}"></div>
-  <div class="field"><label for="${prefix}-tot">総合力</label><input id="${prefix}-tot" type="number" inputmode="numeric" value="${c.tot??""}" placeholder="自動"><span class="hint">空欄＝HP＋攻撃力＋防御力</span></div>
+  <div class="field"><label for="${prefix}-tp">タイプ</label><select id="${prefix}-tp"><option value="">未設定</option>${opt(c.tp && !TYPES.includes(c.tp) ? [...TYPES, c.tp] : TYPES, c.tp||"")}</select></div>
+  <div class="field"><label for="${prefix}-y">実装年度</label><input id="${prefix}-y" type="number" inputmode="numeric" value="${esc(c.y || (prefix==="ed" ? "" : new Date().getFullYear()))}"></div>
+  <div class="field"><label for="${prefix}-hp">HP</label><input id="${prefix}-hp" type="number" inputmode="numeric" required value="${esc(c.hp??"")}"></div>
+  <div class="field"><label for="${prefix}-at">攻撃力</label><input id="${prefix}-at" type="number" inputmode="numeric" required value="${esc(c.at??"")}"></div>
+  <div class="field"><label for="${prefix}-df">防御力</label><input id="${prefix}-df" type="number" inputmode="numeric" required value="${esc(c.df??"")}"></div>
+  <div class="field"><label for="${prefix}-mv">移動力</label><input id="${prefix}-mv" type="number" inputmode="numeric" required value="${esc(c.mv??"")}"></div>
+  <div class="field"><label for="${prefix}-tot">総合力</label><input id="${prefix}-tot" type="number" inputmode="numeric" value="${esc(c.tot??"")}" placeholder="自動"><span class="hint">空欄＝HP＋攻撃力＋防御力</span></div>
   <div class="field"><label for="${prefix}-src">入手先</label><input id="${prefix}-src" list="dl-src" value="${esc(c.src||"")}"></div>
   <div class="field"><label for="${prefix}-like">好きな物</label><input id="${prefix}-like" list="dl-like" value="${esc(c.like||"")}"></div>
   <div class="field wide"><div class="checks">
@@ -805,7 +916,7 @@ function readFields(prefix){
 }
 function previewHTML(c){
   return STATS.map(([k,l]) => { if (c[k]==null || !isFinite(c[k])) return ""; const m = measureWith(k,c[k]);
-    return `<span class="pstat"><span>${l}</span><b class="num">${c[k]}</b><span class="g ${m.grade}">${m.grade}</span><span class="num">${m.rank}位</span></span>`; }).join("");
+    return `<span class="pstat"><span>${l}</span><b class="num">${esc(c[k])}</b><span class="g ${m.grade}">${m.grade}</span><span class="num">${m.rank}位</span></span>`; }).join("");
 }
 function measureWith(k,v){ // as if this new value were added to the set
   const arr = calc[k].slice(); arr.splice(lowerBound(arr,v),0,v); return measure(k,v,arr);
@@ -876,10 +987,10 @@ function openSheet(n){
     <div class="sheet-h"><div class="sh-top">
       <div class="icbtns">${iconHTML(c,"lg")}${assets && canWrite ? `<button class="linkbtn" id="ic-set" type="button">${c.ic?"変更":"アイコン設定"}</button>${c.ic?`<button class="linkbtn del" id="ic-del" type="button">削除</button>`:""}` : ""}</div>
       <div style="min-width:0"><h2 id="sh-name">${esc(c.nm)}</h2>
-      <div class="meta"><span class="num">No.${c.n}</span><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span><span>${c.y||""}年</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}</div></div></div>
+      <div class="meta"><span class="num">No.${esc(c.n)}</span><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span><span>${esc(c.y||"")}年</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}</div></div></div>
       <button class="x" id="sh-close" aria-label="閉じる">×</button></div>
     <div class="sheet-b">
-      <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${c[k]}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
+      <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${esc(c[k])}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
       <div id="cropper" hidden></div>
       ${detailHTML(c)}
       ${canWrite ? `<form id="edform" autocomplete="off"><div class="formgrid">${fieldsHTML("ed", c)}</div>
@@ -900,7 +1011,9 @@ function openSheet(n){
     const {c: nc, errs} = readFields("ed");
     if (errs.length){ $("ed-err").textContent = errs.join("・") + " を入力してください"; return; }
     nc.n = c.n;
-    try { await writeChars([nc]); toast("保存しました"); closeSheet(); } catch(err){ writeError(err); }
+    const orig = stripUser(c), diff = {own: nc.own, made: nc.made};
+    for (const [k, v] of Object.entries(stripUser(nc))) if (k !== "n" && JSON.stringify(orig[k] ?? "") !== JSON.stringify(v ?? "")) diff[k] = v;
+    try { await patchChar(c, diff); toast("保存しました"); closeSheet(); } catch(err){ writeError(err); }
   };
   $("ed-del").onclick = () => {
     $("ed-confirm").innerHTML = `<div class="confirm">「${esc(c.nm)}」を削除します。元に戻せません。<button class="danger" type="button" id="ed-del2">削除する</button><button class="ghost" type="button" id="ed-cancel">やめる</button></div>`;
@@ -909,16 +1022,20 @@ function openSheet(n){
   };
 }
 function hl(s){
-  let h = esc(s);
-  if (F.qa) for (const w of F.qa.split(/\s+/).filter(Boolean)){ const ew = esc(w).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); h = h.replace(new RegExp(ew,"gi"), m=>`<mark>${m}</mark>`); }
-  return h;
+  s = String(s ?? "");
+  const words = F.qa ? F.qa.split(/\s+/).filter(Boolean).slice(0, 8) : [];
+  if (!words.length) return esc(s);
+  const re = new RegExp(words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "gi");
+  let out = "", last = 0, m;
+  while ((m = re.exec(s)) && m[0]){ out += esc(s.slice(last, m.index)) + `<mark>${esc(m[0])}</mark>`; last = m.index + m[0].length; }
+  return out + esc(s.slice(last));
 }
 function abLine(t){
   const m = t.match(/^(\[[^\]]+\])(.*)$/);
   return m ? `<li><span class="who">${esc(m[1])}</span>${hl(m[2])}</li>` : `<li>${hl(t)}</li>`;
 }
 function lv5(r){
-  const m = String(r||"").match(/([0-9?.]+\??%)\s*\(Lv5\)/);
+  const m = String(r||"").slice(0, 200).match(/([0-9?.]{1,8}%)\s*\(Lv5\)/);
   return m ? `発動率 ${m[1]}（Lv5）` : (r || "");
 }
 function detailHTML(c){
@@ -944,9 +1061,15 @@ function iconHTML(c, size){
   if (iconURL[c.n]) return `<img class="${cls}" src="${iconURL[c.n]}" alt="" loading="lazy">`;
   return `<span class="${cls} attr ${esc(c.a)}" aria-hidden="true">${esc((c.nm||"").slice(0,1))}</span>`;
 }
+const MAX_PIXELS = 40e6;
 function loadImage(file){
-  return new Promise((res, rej) => { const url = URL.createObjectURL(file); const im = new Image();
-    im.onload = () => res(im); im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("画像を読み込めませんでした")); }; im.src = url; });
+  return new Promise((res, rej) => {
+    if (file && file.size > 60 * 1048576) return rej(new Error("画像が大きすぎます"));
+    const url = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url);
+      if (im.naturalWidth * im.naturalHeight > MAX_PIXELS) rej(new Error("画像が大きすぎます")); else res(im); };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("画像を読み込めませんでした")); };
+    im.src = url; });
 }
 function makeIcon(img, sx, sy, s){
   const cv = document.createElement("canvas"); cv.width = cv.height = 128;
@@ -960,12 +1083,14 @@ async function saveIcon(c, blob){
   await idb.put("icons", c.n, blob);
   if (iconURL[c.n]) URL.revokeObjectURL(iconURL[c.n]);
   iconURL[c.n] = URL.createObjectURL(blob);
+  BC?.postMessage("icons");
   onData();
   return {id: iconURL[c.n]};
 }
 async function removeIcon(n){
   await idb.del("icons", n);
   if (iconURL[n]){ URL.revokeObjectURL(iconURL[n]); delete iconURL[n]; }
+  BC?.postMessage("icons");
 }
 function assetError(e){
   if (e && e.name === "QuotaExceededError") return "端末の保存容量が足りません";
@@ -1059,7 +1184,7 @@ async function bulkIcons(files){
       const blob = await makeIcon(img, (img.naturalWidth-m)/2, (img.naturalHeight-m)/2, m);
       const r = await saveIcon(c, blob); ok++;
       li.innerHTML = `${iconHTML(c)}<span>${esc(f.name)} → ${esc(c.nm)}</span>`;
-    } catch(e){ li.className = "ng"; li.textContent = `${f.name}：${assetError(e)}`; if (e && (e.code === "quota_or_state" || e.code === "rate_limited")) break; }
+    } catch(e){ li.className = "ng"; li.textContent = `${f.name}：${assetError(e)}`; if (e && (e.name === "QuotaExceededError" || e.code === "quota_or_state" || e.code === "rate_limited")) break; }
   }
   toast(`${ok}体のアイコンを登録しました`);
   renderUsage();
@@ -1195,7 +1320,7 @@ async function zukanGo(){
   for (const j of jobs){
     $("zkprog").textContent=`登録中… ${ok}/${jobs.length}`;
     try { const ins=ZK.inset*(j.cell.s/ZK.size); const blob=await makeIcon(j.s.img, j.cell.x+ins, j.cell.y+ins, j.cell.s-2*ins); await saveIcon(j.c, blob); ok++; }
-    catch(e){ fail=assetError(e); if (e && (e.code==="quota_or_state"||e.code==="rate_limited")) break; }
+    catch(e){ fail=assetError(e); if (e && (e.name==="QuotaExceededError"||e.code==="quota_or_state"||e.code==="rate_limited")) break; }
   }
   toast(`${ok}体のアイコンを登録しました` + (fail?`（${fail}）`:""));
   zkShots.length=0; renderZukan(); renderUsage();
@@ -1279,7 +1404,7 @@ function downloadBlob(filename, blob){
 }
 $("btn-csv").onclick = async () => {
   const head = ["No.","属性","国家","名前","★","HP","HP割合","HPランク","HP評価","攻撃力","攻撃割合","攻撃ランク","攻撃評価","防御力","防御割合","防御ランク","防御評価","移動力","移動割合","移動ランク","移動評価","総合力","総合割合","総合ランク","総合評価","実装年度","所持","入手先","好きな物","作成済み","タイプ","品種","入手詳細"];
-  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const q = v => { let s = String(v ?? ""); if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
   const lines = [head.join(",")].concat(chars.map(c => [c.n,c.a,c.k,c.nm,c.r, ...STATS.flatMap(([k])=>{const m=mOf(c,k); return [c[k],m.pct,m.rank,m.grade];}), c.y, c.own?"◯":"ー", c.src, c.like, c.made?"作成済み":"", c.tp||"", c.sp||"", c.srcD||""].map(q).join(",")));
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"});
   downloadBlob(`galanthus_${new Date().toISOString().slice(0,10)}.csv`, blob);
@@ -1301,85 +1426,134 @@ function onData(){
 }
 /* ---------- バックアップ ---------- */
 function blobToDataURL(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(b); }); }
-async function dataURLToBlob(u){ return (await fetch(u)).blob(); }
+const ICON_RE = /^data:image\/(png|webp|jpeg);base64,([A-Za-z0-9+\/]+={0,2})$/;
+function dataURLToBlob(u){
+  const m = typeof u === "string" && u.length <= 600000 ? ICON_RE.exec(u) : null;
+  if (!m) return null;
+  try { const bin = atob(m[2]); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], {type: "image/" + m[1]}); }
+  catch(e){ return null; }
+}
 $("bk-export").onclick = async () => {
   const icons = {}; const all = await idb.all("icons");
-  for (const [n, b] of Object.entries(all)) icons[n] = await blobToDataURL(b);
-  const data = {app:"galanthus", v:1, exportedAt:new Date().toISOString(),
-    chars: chars.map(stripUser), own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number),
-    del: Object.keys(U.del).map(Number), icons};
+  for (const [n, b] of Object.entries(all)) if (b instanceof Blob) icons[n] = await blobToDataURL(b);
+  // 自分の記録だけを書き出す（マスターの値は含めないので、後でマスターが直っても古い値で上書きしない）
+  const data = {app:"galanthus", v:2, rev:DATA_REV, exportedAt:new Date().toISOString(),
+    own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number), del: Object.keys(U.del).map(Number),
+    ov: U.ov, extra: U.extra, icons};
   downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
-  $("bk-msg").textContent = `書き出しました（${chars.length}体・アイコン${Object.keys(icons).length}枚）。`;
+  $("bk-msg").textContent = `書き出しました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(icons).length}枚）。`;
 };
+function parseBackup(data){
+  if (!data || typeof data !== "object" || data.app !== "galanthus") throw new Error("not galanthus");
+  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}};
+  if (data.ov || data.extra){ const x = sanitizeU(data); nu.ov = x.ov; nu.extra = x.extra; }
+  else if (Array.isArray(data.chars)){
+    // 古い形式（全キャラ入り）：マスターで空欄の項目だけ補い、マスターの値は上書きしない
+    for (const rec of data.chars.slice(0, 20000)){
+      const x = sanitizeChar(rec); if (!x) continue;
+      const m = MASTER.get(x.n);
+      if (!m){ nu.extra[x.n] = x; continue; }
+      const diff = {};
+      for (const [k, v] of Object.entries(x)) if (k !== "n" && (m[k] === "" || m[k] == null) && v !== "" && v != null) diff[k] = v;
+      if (Object.keys(diff).length) nu.ov[x.n] = diff;
+    }
+  }
+  for (const n of Object.keys(nu.del)) if (!MASTER.has(Number(n))) delete nu.del[n];
+  const icons = [];
+  if (data.icons && typeof data.icons === "object" && !Array.isArray(data.icons))
+    for (const [k, u] of Object.entries(data.icons).slice(0, 5000)){ const n = vNum(k), b = dataURLToBlob(u); if (isNo(n) && b) icons.push([n, b]); }
+  return {nu, icons};
+}
 $("bk-file").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  let data; try { data = JSON.parse(await f.text()); } catch(err){ $("bk-msg").textContent = "読み込めませんでした。バックアップのファイルを選んでください。"; return; }
-  if (!data || data.app !== "galanthus" || !Array.isArray(data.chars)){ $("bk-msg").textContent = "このアプリのバックアップではないようです。"; return; }
-  $("bk-msg").textContent = "読み込み中…";
-  U = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
-  for (const rec of data.chars) if (rec && rec.n) applyRecord(rec);
-  for (const n of data.own||[]) U.own[n] = 1;
-  for (const n of data.made||[]) U.made[n] = 1;
-  for (const n of data.del||[]) if (MASTER.has(n)) U.del[n] = 1;
-  await idb.clear("icons"); for (const k of Object.keys(iconURL)){ URL.revokeObjectURL(iconURL[k]); delete iconURL[k]; }
-  let ic = 0;
-  for (const [n, u] of Object.entries(data.icons||{})){ try { const b = await dataURLToBlob(u); await idb.put("icons", Number(n), b); iconURL[n] = URL.createObjectURL(b); ic++; } catch(err){} }
-  await commit(); renderUsage();
-  $("bk-msg").textContent = `読み込みました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${ic}枚）。`;
+  const msg = $("bk-msg");
+  if (f.size > 200 * 1048576){ msg.textContent = "ファイルが大きすぎます。"; return; }
+  let parsed;
+  try { parsed = parseBackup(JSON.parse(await f.text())); }
+  catch(err){ msg.textContent = "このアプリのバックアップとして読み込めませんでした。ファイルを確認してください。"; return; }
+  const {nu, icons} = parsed;
+  msg.innerHTML = `<div class="confirm">読み込むと、今この端末にある所持状況・作成済み・アイコン・編集内容は<b>すべて置き換わります</b>。<br>
+    今：所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(iconURL).length}枚<br>
+    読み込み後：所持${Object.keys(nu.own).length}体・作成済み${Object.keys(nu.made).length}体・アイコン${icons.length}枚
+    <button class="danger" type="button" id="bk-ok">置き換えて読み込む</button><button class="ghost" type="button" id="bk-no">やめる</button></div>`;
+  $("bk-no").onclick = () => { msg.textContent = "読み込みをやめました。"; };
+  $("bk-ok").onclick = async () => {
+    msg.textContent = "読み込み中…";
+    try {
+      const run = () => idb.replaceUserAndIcons(nu, icons);
+      if (navigator.locks?.request) await navigator.locks.request("galanthus-user", run); else await run();
+      U = nu; await reloadIcons();
+      BC?.postMessage("user"); BC?.postMessage("icons");
+      await reconcileExtras();
+      onData(); renderUsage();
+      msg.textContent = `読み込みました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${icons.length}枚）。`;
+    } catch(err){
+      msg.textContent = err && err.name === "QuotaExceededError" ? "端末の保存容量が足りず、読み込めませんでした。今のデータはそのままです。" : "読み込めませんでした。今のデータはそのままです。";
+    }
+  };
 };
 
 /* ---------- キャラデータの更新（GitHubから最新版を取得） ---------- */
 const REMOTE = "https://raw.githubusercontent.com/shroudf-wq/galanthus-chara-db/main/data/";
-let DATA_REV = 0, DATA_FROM = "";
-function applyMaster(cj, dj, from){
-  MASTER = new Map(cj.chars.map(c=>[c.n, c]));
-  DET = dj || {};
-  DATA_REV = cj.rev || 0; DATA_FROM = from;
-  $("dataver").textContent = `キャラデータ：${cj.updated || ""}時点・${cj.chars.length}体（${from}）`;
+let DATA_REV = 0, DATA_FROM = "", BUNDLED = null;
+function applyMaster(m, from){
+  MASTER = new Map(m.cj.chars.map(c=>[c.n, c]));
+  DET = m.dj || {};
+  DATA_REV = m.cj.rev; DATA_FROM = from;
+  $("dataver").textContent = `キャラデータ：${m.cj.updated || ""}時点・${m.cj.chars.length}体（${from}）`;
 }
+const getJSON = url => fetch(url, {cache:"no-store"}).then(r => { if (!r.ok) throw new Error("http " + r.status); return r.json(); });
 let checking = false;
 async function checkRemote(manual){
   if (checking) return; checking = true;
   const btn = $("dv-check"); if (manual && btn){ btn.disabled = true; btn.textContent = "確認中…"; }
   try {
-    const v = await fetch(REMOTE + "version.json?t=" + Date.now(), {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); });
-    if ((v.rev||0) > DATA_REV){
-      const [cj, dj] = await Promise.all([
-        fetch(REMOTE + "chars.json?r=" + v.rev, {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
-        fetch(REMOTE + "details.json?r=" + v.rev, {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
-      ]);
-      if (!cj || !Array.isArray(cj.chars) || !cj.chars.length) throw 0;
-      const before = MASTER.size;
-      await idb.put("kv", "remoteData", {chars: cj, details: dj}).catch(()=>{});
-      applyMaster(cj, dj, "GitHubから取得");
-      onData();
-      const added = cj.chars.length - before;
-      toast(added > 0 ? `キャラデータを更新しました（新キャラ${added}体）` : "キャラデータを最新版に更新しました");
-    } else if (manual) toast("キャラデータは最新です");
-  } catch(e){ if (manual) toast("最新データを確認できませんでした。通信状況を確認してください"); }
+    const v = await getJSON(REMOTE + "version.json?t=" + Date.now());
+    const rev = v && v.rev;
+    if (!Number.isSafeInteger(rev) || rev < 0 || rev >= 1e6) throw new Error("bad rev");
+    if (rev === DATA_REV){ if (manual) toast("キャラデータは最新です"); return; }
+    // GitHub側が同梱データより古い版に戻された場合は、同梱データに戻す
+    if (BUNDLED && rev <= BUNDLED.cj.rev){
+      if (DATA_FROM !== "アプリ同梱"){ await idb.del("kv","remoteData").catch(()=>{}); applyMaster(BUNDLED, "アプリ同梱"); onData(); toast("キャラデータを元に戻しました"); }
+      else if (manual) toast("キャラデータは最新です");
+      return;
+    }
+    const [c, d] = await Promise.all([getJSON(REMOTE + "chars.json?r=" + rev), getJSON(REMOTE + "details.json?r=" + rev)]);
+    const m = sanitizeMaster(c, d);                       // 検証してから
+    if (m.cj.rev !== rev) throw new Error("rev mismatch");
+    if (MASTER.size && m.cj.chars.length < MASTER.size * 0.8) throw new Error("too few characters");
+    const before = MASTER.size;
+    applyMaster(m, "GitHubから取得");                      // 画面に反映し
+    await idb.put("kv", "remoteData", {chars: m.cj, details: m.dj}).catch(()=>{});   // 問題がなければ保存
+    await reconcileExtras();
+    onData();
+    const added = m.cj.chars.length - before;
+    toast(added > 0 ? `キャラデータを更新しました（新キャラ${added}体）` : "キャラデータを最新版に更新しました");
+  } catch(e){ if (manual) toast("最新データを確認できませんでした。時間をおいてもう一度お試しください"); }
   finally { checking = false; if (btn){ btn.disabled = false; btn.textContent = "最新データを確認"; } }
 }
 
 (async () => {
   db = true;
-  try {
-    const [cj, dj, saved, icons, cached] = await Promise.all([
-      fetch("data/chars.json", {cache:"no-cache"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
-      fetch("data/details.json", {cache:"no-cache"}).then(r=>r.ok?r.json():{}).catch(()=>({})),
-      idb.get("kv","user").catch(()=>null),
-      idb.all("icons").catch(()=>({})),
-      idb.get("kv","remoteData").catch(()=>null),
-    ]);
-    // 前回GitHubから取ってきたデータのほうが新しければ、そちらを使う
-    if (cached && cached.chars && (cached.chars.rev||0) > (cj.rev||0)) applyMaster(cached.chars, cached.details, "GitHubから取得");
-    else applyMaster(cj, dj, "アプリ同梱");
-    if (saved) U = Object.assign({own:{}, made:{}, ov:{}, extra:{}, del:{}}, saved);
-    for (const [n, b] of Object.entries(icons)) iconURL[n] = URL.createObjectURL(b);
-  } catch(e){
-    $("status").innerHTML = `<h2>データを読み込めませんでした</h2><div>通信状況を確認して、ページを再読み込みしてください。</div>`;
+  const [c, d, saved, cached] = await Promise.all([
+    getJSON("data/chars.json").catch(()=>null),
+    getJSON("data/details.json").catch(()=>({})),
+    idb.get("kv","user").catch(()=>null),
+    idb.get("kv","remoteData").catch(()=>null),
+  ]);
+  try { if (c) BUNDLED = sanitizeMaster(c, d); } catch(e){ BUNDLED = null; }
+  let remote = null;
+  try { if (cached) remote = sanitizeMaster(cached.chars, cached.details); } catch(e){ idb.del("kv","remoteData").catch(()=>{}); }
+  if (remote && (!BUNDLED || remote.cj.rev > BUNDLED.cj.rev)) applyMaster(remote, "GitHubから取得");
+  else if (BUNDLED) applyMaster(BUNDLED, "アプリ同梱");
+  U = sanitizeU(saved);
+  await reloadIcons();
+  setTimeout(() => checkRemote(false), 800);
+  if (!MASTER.size){
+    $("status").innerHTML = `<h2>データを読み込めませんでした</h2><div>通信状況を確認して、少し待ってから再読み込みしてください。</div>`;
     return;
   }
-  setTimeout(() => checkRemote(false), 800);
+  await reconcileExtras();
   $("icpanel").hidden = false;
   renderUsage();
   onData();

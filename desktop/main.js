@@ -1,5 +1,5 @@
 // Galanthus デスクトップ版：同梱のWebアプリを専用ウィンドウで開く
-const { app, BrowserWindow, protocol, net, shell, Menu } = require("electron");
+const { app, BrowserWindow, protocol, net, shell, Menu, session } = require("electron");
 const path = require("path");
 const { pathToFileURL } = require("url");
 
@@ -10,7 +10,8 @@ protocol.registerSchemesAsPrivileged([
   { scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
 
-if (!app.requestSingleInstanceLock()) app.quit();
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
 
 let win;
 function createWindow() {
@@ -36,12 +37,22 @@ function createWindow() {
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 
 app.whenReady().then(() => {
-  protocol.handle("app", (req) => {
-    const { pathname } = new URL(req.url);
-    const rel = decodeURIComponent(pathname).replace(/^\/+/, "") || "index.html";
-    const file = path.normalize(path.join(WEB, rel));
-    if (!file.startsWith(WEB)) return new Response("Not found", { status: 404 });
-    return net.fetch(pathToFileURL(file).toString());
+  if (!gotLock) return;
+  // このアプリはカメラ・マイク・位置情報・通知などを使わないので、すべて拒否する
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(false));
+  session.defaultSession.setPermissionCheckHandler(() => false);
+  protocol.handle("app", async (req) => {
+    const notFound = () => new Response("Not found", { status: 404 });
+    let rel;
+    try {
+      const u = new URL(req.url);
+      if (u.host !== "galanthus") return notFound();
+      rel = decodeURIComponent(u.pathname).replace(/^[\/\\]+/, "") || "index.html";
+    } catch (e) { return notFound(); }
+    const file = path.resolve(WEB, rel);
+    const inside = path.relative(WEB, file);
+    if (!inside || inside.startsWith("..") || path.isAbsolute(inside)) return notFound();
+    try { return await net.fetch(pathToFileURL(file).toString()); } catch (e) { return notFound(); }
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: "表示", submenu: [
@@ -53,4 +64,7 @@ app.whenReady().then(() => {
   createWindow();
 });
 
+app.on("web-contents-created", (_e, wc) => {
+  wc.on("will-attach-webview", (e) => e.preventDefault());
+});
 app.on("window-all-closed", () => app.quit());
