@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-v53emApMcN0UL7/rfGR1AbW9XgxB5vfmeMKNZbPvKsE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-178rWHN23ZrBPPP42tLHG4VJlRrrMsVpVTYNmy52nC0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -266,7 +266,9 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
 .slot{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg);cursor:pointer;min-width:0;position:relative}
 .slot .ic{width:36px;height:36px}
 .slot.empty{justify-content:center;color:var(--faint);border-style:dashed;min-height:54px}
-.slot.memslot{grid-column:1/-1;background:var(--sunk)}
+.slot-col{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sl-mem{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:inherit}
+.sl-mem.on{border-color:var(--accent);background:var(--accent-soft)}
 .sl-txt{min-width:0;display:flex;flex-direction:column}
 .sl-txt b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-txt small{font-size:11px;color:var(--muted)}
@@ -477,7 +479,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
         </div>
         <div class="tm-namebox" id="tm-namebox" hidden><input id="tm-name" maxlength="40" aria-label="編成の名前"><button class="primary" type="button" id="tm-nameok">保存</button><button class="ghost" type="button" id="tm-namecancel">やめる</button></div>
         <div class="tm-slots" id="tm-slots"></div>
-        <label class="sel" style="margin-top:8px">メモリー <select id="tm-memsel"></select></label>
+        <p class="note" style="margin:6px 0 0">フラワーメモリーは各キャラの下で1つずつ付けられます。</p>
         <div class="tm-meta" id="tm-meta"></div>
         <ul class="tm-warn" id="tm-warn" hidden></ul>
         <h3 class="tm-h">パーティ全体・敵への効果</h3>
@@ -959,7 +961,7 @@ function statCell(c,k){
   return `<span class="stat">${esc(v)}<span class="g ${m.grade}">${m.grade}</span></span>`;
 }
 function render(){
-  if (view !== "list") { if (view==="stats") renderStats(); else if (view==="mem") renderMem(); else if (view==="team"){ renderTeamMemSelect(); renderTeam(); } return; }
+  if (view !== "list") { if (view==="stats") renderStats(); else if (view==="mem") renderMem(); else if (view==="team"){ renderTeam(); } return; }
   renderHead();
   let rows = chars.filter(matches);
   const k = sortKey, d = sortDir;
@@ -1181,13 +1183,17 @@ function memEffects(m){
   return lines.flatMap(l => parseLine(l)).filter(e => e.key);
 }
 function fmtVal(v, unit){ return v == null ? "" : (Math.round(v * 100) / 100) + unit; }
-function emptyTeam(name){ return {name: name || "編成1", m: [null, null, null, null, null], mem: null}; }
+function emptyTeam(name){ return {name: name || "編成1", m: [null, null, null, null, null], mems: [null, null, null, null, null]}; }
 function sanitizeTeams(x){
   if (!Array.isArray(x)) return [];
   return x.slice(0, 50).filter(t => t && typeof t === "object").map(t => ({
     name: vStr(t.name, 40) || "編成",
     m: Array.from({length: 5}, (_, i) => { const n = vNum(Array.isArray(t.m) ? t.m[i] : null); return isNo(n) ? n : null; }),
-    mem: isNo(vNum(t.mem)) ? vNum(t.mem) : null,
+    // 以前の形式（編成に1つだけ）は先頭のキャラに付け替える
+    mems: (() => {
+      const m = Array.isArray(t.m) ? t.m : []; const first = Math.max(0, [0,1,2,3,4].find(i => isNo(vNum(m[i]))) ?? 0);
+      return Array.from({length: 5}, (_, i) => { const n = vNum(Array.isArray(t.mems) ? t.mems[i] : (i === first ? t.mem : null)); return isNo(n) && isNo(vNum(m[i])) ? n : null; });
+    })(),
     st: isNo(vNum(t.st)) ? vNum(t.st) : null,
   }));
 }
@@ -1209,10 +1215,12 @@ async function addToTeam(n){
 function teamSummary(t){
   const byNo = new Map(chars.map(c => [c.n, c]));
   const members = t.m.map(n => n != null ? byNo.get(n) : null);
-  const mem = t.mem != null ? MEM.find(m => m.id === t.mem) : null;
+  const tm = Array.isArray(t.mems) ? t.mems : [];
+  const mems = members.map((c, i) => c && tm[i] != null ? MEM.find(m => m.id === tm[i]) || null : null);
   const sources = [];
   members.forEach((c, i) => { if (c) sources.push({who: c.nm, slot: i, effs: charEffects(c)}); });
-  if (mem) sources.push({who: "メモリー：" + mem.nm, slot: 5, effs: memEffects(mem)});
+  // メモリーの「自分だけ」の効果は、付けたキャラの効果として数える
+  mems.forEach((m, i) => { if (m) sources.push({who: `${members[i].nm}（${m.nm}）`, slot: i, effs: memEffects(m)}); });
   const agg = {}; const selfList = [];
   for (const s of sources) for (const e of s.effs){
     if (e.scope === "self"){ selfList.push({...e, who: s.who}); continue; }
@@ -1232,7 +1240,10 @@ function teamSummary(t){
   if (dup.length) warn.push(`同じキャラの別衣装が入っています（${dup.join("、")}）。ゲームでは同時に編成できない場合があります。`);
   const notOwn = members.filter(c => c && !c.own).map(c => c.nm);
   if (notOwn.length) warn.push(`未所持のキャラが入っています（${notOwn.join("、")}）。`);
-  if (mem && !U.mown?.[mem.id]) warn.push("未所持のメモリーです（最大解放時の効果で計算しています）。");
+  const notOwnMem = mems.filter(m => m && !U.mown?.[m.id]).map(m => m.nm);
+  if (notOwnMem.length) warn.push(`未所持のメモリーがあります（${[...new Set(notOwnMem)].join("、")}）。最大解放時の効果で計算しています。`);
+  const mids = mems.filter(Boolean).map(m => m.id); const dupM = [...new Set(mids.filter((x, i) => mids.indexOf(x) !== i))].map(id => MEM.find(m => m.id === id).nm);
+  if (dupM.length) warn.push(`同じメモリーを複数のキャラに付けています（${dupM.join("、")}）。持っている枚数を確認してください。`);
   const has = k => agg[k] && (agg[k].always > 0 || agg[k].cond > 0 || agg[k].items.length);
   if (members.filter(Boolean).length){
     if (!["nullify","guts","hpguard","barrier","dmgcut"].some(has)) warn.push("パーティ全体にかかる耐久系の効果（ダメージ無効化・ガッツ・HP保護・防壁・被ダメージ低下）がありません。");
@@ -1256,7 +1267,7 @@ function teamSummary(t){
     if (tg.has("hitup") && ["evade","spevade"].some(any) && !["nullify","barrier"].some(has)) swarn.push("敵が命中率を上げてきます。回避に頼った守りは崩れやすいです。");
     if (tg.has("skdown") && !has("skrate")) swarn.push("スキル発動率を下げてくる敵がいます。スキル発動率アップがありません。");
   }
-  return {members, mem, agg, selfList, attrs, types, warn, totalStat, stage, swarn};
+  return {members, mems, agg, selfList, attrs, types, warn, totalStat, stage, swarn};
 }
 /* --- たたき台の自動提案 --- */
 const PRESETS = {
@@ -1285,8 +1296,8 @@ function suggestTeam(presetKey, opts){
   const w = presetKey === "stage" && opts.stage ? stageWeights(opts.stage) : PRESETS[presetKey].w;
   let pool = chars.filter(c => (!opts.owned || c.own) && (!opts.attr || c.a === opts.attr) && charEffects(c).length);
   // 候補を単体の点数で上位に絞ってから組み合わせを探す
-  const solo = pool.map(c => ({c, s: scoreTeam({m: [c.n, null, null, null, null], mem: null}, w)})).sort((a, b) => b.s - a.s).slice(0, 120).map(x => x.c);
-  const t = {m: [null, null, null, null, null], mem: null};
+  const solo = pool.map(c => ({c, s: scoreTeam({m: [c.n, null, null, null, null], mems: []}, w)})).sort((a, b) => b.s - a.s).slice(0, 120).map(x => x.c);
+  const t = {m: [null, null, null, null, null], mems: [null, null, null, null, null]};
   for (let i = 0; i < 5; i++){
     let best = null, bs = -1;
     const used = new Set(t.m.filter(Boolean).map(n => BASE(chars.find(c => c.n === n).nm)));
@@ -1303,9 +1314,13 @@ function suggestTeam(presetKey, opts){
     t.m[i] = keep;
   }
   const memPool = MEM.filter(m => !opts.owned || U.mown?.[m.id]);
-  let bm = null, bms = scoreTeam(t, w);
-  for (const m of memPool){ t.mem = m.id; const s = scoreTeam(t, w); if (s > bms){ bms = s; bm = m.id; } }
-  t.mem = bm;
+  // 1人に1つずつ、効果が大きくなるメモリーを付ける（同じメモリーは1回まで）
+  for (let i = 0; i < 5; i++){
+    if (t.m[i] == null) continue;
+    let bm = null, bms = scoreTeam(t, w);
+    for (const m of memPool){ if (t.mems.includes(m.id)) continue; t.mems[i] = m.id; const s = scoreTeam(t, w); if (s > bms){ bms = s; bm = m.id; } }
+    t.mems[i] = bm;
+  }
   return t;
 }
 
@@ -1315,11 +1330,11 @@ function teamEffectOptions(){ return Object.entries(EFFECTS).sort((a, b) => CAT_
 function renderTeam(){
   const t = curTeam(); const s = teamSummary(t);
   $("tm-sel").innerHTML = teams().map((x, i) => `<option value="${i}"${i === teamIdx ? " selected" : ""}>${esc(x.name)}</option>`).join("");
+  const memOpts = memOptionsHTML();
   $("tm-slots").innerHTML = s.members.map((c, i) => c
-    ? `<div class="slot" data-i="${i}">${iconHTML(c)}<div class="sl-txt"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(c.tp || "")} ${c.own ? "" : "・未所持"}</small></div><button class="x sl-x" type="button" data-rm="${i}" aria-label="外す">×</button></div>`
-    : `<div class="slot empty" data-i="${i}">空き</div>`).join("")
-    + (s.mem ? `<div class="slot memslot"><div class="sl-txt"><b>${esc(s.mem.nm)}</b><small>メモリー・${esc(s.mem.r)}${U.mown?.[s.mem.id] ? (U.mmax?.[s.mem.id] ? "・最大解放" : "・未解放") : "・未所持"}</small></div><button class="x sl-x" type="button" data-rmmem="1" aria-label="外す">×</button></div>`
-             : `<div class="slot memslot empty">メモリー：空き</div>`);
+    ? `<div class="slot-col"><div class="slot" data-i="${i}">${iconHTML(c)}<div class="sl-txt"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(c.tp || "")} ${c.own ? "" : "・未所持"}</small></div><button class="x sl-x" type="button" data-rm="${i}" aria-label="外す">×</button></div>`
+      + `<select class="sl-mem${s.mems[i] ? " on" : ""}" data-mi="${i}" aria-label="${esc(c.nm)}のメモリー">${memOpts.replace(`value="${s.mems[i] ? s.mems[i].id : ""}"`, `value="${s.mems[i] ? s.mems[i].id : ""}" selected`)}</select></div>`
+    : `<div class="slot-col"><div class="slot empty" data-i="${i}">空き</div></div>`).join("");
   const attrTxt = Object.entries(s.attrs).map(([a, n]) => `<span class="attr ${esc(a)}">${esc(a)}</span>×${n}`).join("　") || "—";
   const typeTxt = Object.entries(s.types).map(([a, n]) => `${esc(a)}×${n}`).join("　") || "—";
   $("tm-meta").innerHTML = `<span>属性：${attrTxt}</span><span>タイプ：${typeTxt}</span><span>総合力合計：<b class="num">${s.totalStat}</b></span>`;
@@ -1368,8 +1383,8 @@ function initTeamUI(){
   let qt2; $("ts-q").oninput = e => { clearTimeout(qt2); qt2 = setTimeout(() => { TF.q = e.target.value.trim(); renderTeamSearch(); }, 150); };
   $("ts-list").onclick = e => { const n = Number(e.target.dataset.add); if (isNo(n)) addToTeam(n); else { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); } };
   $("tm-slots").onclick = async e => {
-    if (e.target.dataset.rm != null){ const i = Number(e.target.dataset.rm); await saveTeam(t => { t.m[i] = null; }); return; }
-    if (e.target.dataset.rmmem){ await saveTeam(t => { t.mem = null; }); return; }
+    if (e.target.dataset.rm != null){ const i = Number(e.target.dataset.rm); await saveTeam(t => { t.m[i] = null; t.mems[i] = null; }); return; }
+    if (e.target.closest("select")) return;
     const sl = e.target.closest(".slot[data-i]"); if (!sl) return;
     const n = curTeam().m[Number(sl.dataset.i)]; if (n != null) openSheet(n); else $("ts-q").focus();
   };
@@ -1380,13 +1395,16 @@ function initTeamUI(){
   };
   $("tm-nameok").onclick = async () => { const v = $("tm-name").value.trim(); if (v) await saveTeam(t => { t.name = v; }); $("tm-namebox").hidden = true; };
   $("tm-namecancel").onclick = () => { $("tm-namebox").hidden = true; };
-  $("tm-clear").onclick = async () => { await saveTeam(t => { t.m = [null, null, null, null, null]; t.mem = null; }); };
+  $("tm-clear").onclick = async () => { await saveTeam(t => { t.m = [null, null, null, null, null]; t.mems = [null, null, null, null, null]; }); };
   $("tm-del").onclick = async () => {
     if (teams().length <= 1){ await saveTeam(t => { Object.assign(t, emptyTeam(t.name)); }); return; }
     await mutate(() => { U.teams = teams().slice(); U.teams.splice(teamIdx, 1); teamIdx = Math.max(0, teamIdx - 1); U.teams = sanitizeTeams(U.teams); });
   };
   // メモリー選択
-  $("tm-memsel").onchange = async e => { const id = vNum(e.target.value); await saveTeam(t => { t.mem = isNo(id) ? id : null; }); };
+  $("tm-slots").onchange = async e => {
+    const i = Number(e.target.dataset.mi); if (!(i >= 0 && i < 5)) return;
+    const id = vNum(e.target.value); await saveTeam(t => { t.mems[i] = isNo(id) ? id : null; });
+  };
   // ステージ
   $("st-cat").onchange = () => { stCat = $("st-cat").value; fillStageSel(); };
   $("st-sel").onchange = async e => {
@@ -1407,7 +1425,7 @@ function initTeamUI(){
       const t = suggestTeam(pk, {owned: $("sg-owned").checked, attr: $("sg-attr").value, stage: stg});
       if (!t.m.some(Boolean)){ toast("条件に合うキャラが見つかりませんでした"); return; }
       const label = pk === "stage" ? stg.nm : PRESETS[pk].label;
-      await mutate(() => { U.teams = teams().slice(); U.teams.push({name: ("たたき台：" + label + ($("sg-attr").value ? "・" + $("sg-attr").value : "")).slice(0, 40), m: t.m, mem: t.mem, st: pk === "stage" ? stg.id : curTeam().st}); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); });
+      await mutate(() => { U.teams = teams().slice(); U.teams.push({name: ("たたき台：" + label + ($("sg-attr").value ? "・" + $("sg-attr").value : "")).slice(0, 40), m: t.m, mems: t.mems, st: pk === "stage" ? stg.id : curTeam().st}); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); });
       toast("たたき台を新しい編成として作りました");
     } finally { btn.disabled = false; btn.textContent = "たたき台を作る"; }
   };
@@ -1436,10 +1454,10 @@ function renderStage(){
     + (tags ? `<div class="st-tags">${tags}</div><details class="tm-stage"><summary>注意点の説明</summary><ul class="tm-items">${hints}</ul></details>` : "")
     + (en ? `<ul class="st-en">${en}</ul>` : `<p class="muted note">敵の一覧はwikiの表から読み取れませんでした。wikiのページを見てください。</p>`);
 }
-function renderTeamMemSelect(){
-  const t = curTeam(); const own = MEM.filter(m => U.mown?.[m.id]); const rest = MEM.filter(m => !U.mown?.[m.id]);
-  const opt = m => `<option value="${m.id}"${t.mem === m.id ? " selected" : ""}>${esc(m.r)} ${esc(m.nm)}</option>`;
-  $("tm-memsel").innerHTML = `<option value="">メモリーなし</option>` + (own.length ? `<optgroup label="所持">${own.map(opt).join("")}</optgroup>` : "") + `<optgroup label="未所持">${rest.map(opt).join("")}</optgroup>`;
+function memOptionsHTML(){
+  const own = MEM.filter(m => U.mown?.[m.id]); const rest = MEM.filter(m => !U.mown?.[m.id]);
+  const opt = m => `<option value="${m.id}">${esc(m.r)} ${esc(m.nm)}</option>`;
+  return `<option value="">メモリーなし</option>` + (own.length ? `<optgroup label="所持">${own.map(opt).join("")}</optgroup>` : "") + `<optgroup label="未所持">${rest.map(opt).join("")}</optgroup>`;
 }
 
 initTeamUI();
