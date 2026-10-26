@@ -1,7 +1,7 @@
 {
   "name": "galanthus-chara-db",
   "productName": "Galanthus",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "キャラのステータス・スキル・所持状況を管理するアプリ",
   "main": "main.js",
   "author": "shroudf-wq",

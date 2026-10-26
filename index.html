@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-178rWHN23ZrBPPP42tLHG4VJlRrrMsVpVTYNmy52nC0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-+8NjQ5wX3iXOGTaGqxnGrXtVaDH5qcjR43VSBjHI4Iw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -266,6 +266,11 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
 .slot{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg);cursor:pointer;min-width:0;position:relative}
 .slot .ic{width:36px;height:36px}
 .slot.empty{justify-content:center;color:var(--faint);border-style:dashed;min-height:54px}
+.rs-sec h3{margin:0 0 4px;font-size:15px}
+.rs-row{display:grid;grid-template-columns:minmax(0,1fr) 88px auto auto;gap:6px;align-items:center;margin-top:6px}
+.rs-row select,.rs-row input{min-width:0;width:100%;padding:4px 6px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:inherit;font-size:13px}
+.rs-row .u{font-size:12px;color:var(--muted);min-width:2.5em}
+.rs-tbl td{font-size:12.5px}
 .slot-col{display:flex;flex-direction:column;gap:4px;min-width:0}
 .sl-mem{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:inherit}
 .sl-mem.on{border-color:var(--accent);background:var(--accent-soft)}
@@ -519,6 +524,12 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
             <button class="primary" type="button" id="sg-go">たたき台を作る</button>
           </div>
         </div>
+        <div class="panel">
+          <details><summary><b>百花錬成で付くアビリティ</b>（wikiより）</summary>
+          <div class="trow" style="margin-top:8px"><label class="sel">毛玉 <select id="rs-ball"><option value="">精霊の毛玉（全部）</option><option value="攻撃">ちりちりの毛玉（攻撃）</option><option value="守護">かちかちの毛玉（守護）</option><option value="回復">ふわふわの毛玉（回復）</option><option value="支援">すべすべの毛玉（支援）</option><option value="妨害">ごわごわの毛玉（妨害）</option><option value="特殊">ぴかぴかの毛玉（特殊）</option></select></label></div>
+          <div class="scroll"><table class="mini rs-tbl"><thead><tr><th>アビリティ</th><th class="r">数値の幅</th></tr></thead><tbody id="rs-ref"></tbody></table></div>
+          <p class="note">毛玉ごとに「出やすい」アビリティです。各キャラの錬成結果は、キャラの詳細画面で記録できます。</p></details>
+        </div>
       </div>
     </div>
   </section>
@@ -746,12 +757,33 @@ function noMap(x){
   else if (x && typeof x === "object") Object.keys(x).slice(0, 50000).forEach(k => { if (x[k]) add(k); });
   return o;
 }
+/* 百花錬成：wiki「百花錬成」の発現アビリティリスト（id は記録のキーなので変えない） */
+const RS_LIST = [{"id":"r01","l":"[5人][参戦]攻撃力上昇","k":"atk","s":"party","u":"%","lo":30,"hi":100,"c":false,"t":["攻撃","支援"]},{"id":"r02","l":"[自身]攻撃力上昇","k":"atk","s":"self","u":"%","lo":130,"hi":200,"c":false,"t":["攻撃"]},{"id":"r03","l":"[5人][参戦]与ダメージ上昇","k":"dmg","s":"party","u":"%","lo":30,"hi":75,"c":false,"t":["攻撃","支援"]},{"id":"r04","l":"[自身]与ダメージ上昇","k":"dmg","s":"self","u":"%","lo":80,"hi":150,"c":false,"t":["攻撃"]},{"id":"r05","l":"[5人][参戦]ボスダメージ上昇","k":"boss","s":"party","u":"%","lo":30,"hi":75,"c":false,"t":["攻撃","支援"]},{"id":"r06","l":"[自身]ボスダメージ上昇","k":"boss","s":"self","u":"%","lo":105,"hi":150,"c":false,"t":["攻撃"]},{"id":"r07","l":"[5人][参戦]スキル発動率","k":"skrate","s":"party","u":"倍","lo":1.05,"hi":1.5,"c":false,"t":["攻撃","支援"]},{"id":"r08","l":"[自身]スキル発動率","k":"skrate","s":"self","u":"倍","lo":1.1,"hi":2,"c":false,"t":["攻撃"]},{"id":"r09","l":"[5人][参戦]スキルダメージ上昇","k":"skdmg","s":"party","u":"%","lo":50,"hi":75,"c":false,"t":["攻撃","支援"]},{"id":"r10","l":"[自身]スキルダメージ上昇","k":"skdmg","s":"self","u":"%","lo":125,"hi":150,"c":false,"t":["攻撃"]},{"id":"r11","l":"[5人][参戦]クリティカル率上昇","k":"crit","s":"party","u":"%","lo":5,"hi":10,"c":false,"t":["攻撃","支援"]},{"id":"r12","l":"[自身]クリティカル率上昇","k":"crit","s":"self","u":"%","lo":20,"hi":35,"c":false,"t":["攻撃"]},{"id":"r13","l":"[5人][参戦]クリティカルダメージ上昇","k":"critdmg","s":"party","u":"%","lo":50,"hi":75,"c":false,"t":["攻撃","支援"]},{"id":"r14","l":"[自身]クリティカルダメージ上昇","k":"critdmg","s":"self","u":"%","lo":100,"hi":150,"c":false,"t":["攻撃"]},{"id":"r15","l":"[5人][参戦]弱点属性ダメージ上昇","k":"weak","s":"party","u":"%","lo":50,"hi":75,"c":false,"t":["攻撃","支援"]},{"id":"r16","l":"[自身]弱点属性ダメージ上昇","k":"weak","s":"self","u":"%","lo":100,"hi":150,"c":false,"t":["攻撃"]},{"id":"r17","l":"[5人][参戦]命中率上昇","k":"hit","s":"party","u":"%","lo":5,"hi":30,"c":false,"t":["攻撃","支援"]},{"id":"r18","l":"[自身]命中率上昇","k":"hit","s":"self","u":"%","lo":15,"hi":40,"c":false,"t":["攻撃"]},{"id":"r19","l":"[5人][参戦]再行動率上昇","k":"react","s":"party","u":"%","lo":5,"hi":10,"c":false,"t":["攻撃","支援"]},{"id":"r20","l":"[自身]再行動率上昇","k":"react","s":"self","u":"%","lo":10,"hi":35,"c":false,"t":["攻撃"]},{"id":"r21","l":"[5人][参戦]防御力上昇","k":"def","s":"party","u":"%","lo":25,"hi":50,"c":false,"t":["守護","支援"]},{"id":"r22","l":"[自身]防御力上昇","k":"def","s":"self","u":"%","lo":80,"hi":120,"c":false,"t":["守護"]},{"id":"r23","l":"[5人][参戦]被ダメージ低下","k":"dmgcut","s":"party","u":"%","lo":5,"hi":30,"c":false,"t":["守護","支援"]},{"id":"r24","l":"[自身]被ダメージ低下","k":"dmgcut","s":"self","u":"%","lo":30,"hi":60,"c":false,"t":["守護"]},{"id":"r25","l":"[5人][参戦]防壁","k":"barrier","s":"party","u":"%","lo":5,"hi":15,"c":false,"t":["守護","支援"]},{"id":"r26","l":"[自身]防壁","k":"barrier","s":"self","u":"%","lo":15,"hi":25,"c":false,"t":["守護"]},{"id":"r27","l":"[5人][参戦]防御発動率上昇","k":"defrate","s":"party","u":"%","lo":1,"hi":5,"c":false,"t":["守護","支援"]},{"id":"r28","l":"[自身]防御発動率上昇","k":"defrate","s":"self","u":"%","lo":5,"hi":19,"c":false,"t":["守護"]},{"id":"r29","l":"[5人][参戦]クリティカル攻撃による被ダメージ低下","k":"dmgcut","s":"party","u":"%","lo":25,"hi":50,"c":true,"t":["守護","支援"]},{"id":"r30","l":"[自身]クリティカル攻撃による被ダメージ低下","k":"dmgcut","s":"self","u":"%","lo":40,"hi":80,"c":true,"t":["守護"]},{"id":"r31","l":"[5人][参戦]クリティカルではない攻撃による被ダメージ低下","k":"dmgcut","s":"party","u":"%","lo":25,"hi":50,"c":true,"t":["守護","支援"]},{"id":"r32","l":"[自身]クリティカルではない攻撃による被ダメージ低下","k":"dmgcut","s":"self","u":"%","lo":40,"hi":80,"c":true,"t":["守護"]},{"id":"r33","l":"[5人][参戦]スキル攻撃による被ダメージ低下","k":"dmgcut","s":"party","u":"%","lo":25,"hi":50,"c":true,"t":["守護","支援"]},{"id":"r34","l":"[自身]スキル攻撃による被ダメージ低下","k":"dmgcut","s":"self","u":"%","lo":40,"hi":80,"c":true,"t":["守護"]},{"id":"r35","l":"[5人][参戦]スキルではない攻撃による被ダメージ低下","k":"dmgcut","s":"party","u":"%","lo":25,"hi":50,"c":true,"t":["守護","支援"]},{"id":"r36","l":"[自身]スキルではない攻撃による被ダメージ低下","k":"dmgcut","s":"self","u":"%","lo":40,"hi":80,"c":true,"t":["守護"]},{"id":"r37","l":"[5人][参戦]確率ガッツ","k":"guts","s":"party","u":"回","lo":1,"hi":5,"c":true,"t":["守護","支援"]},{"id":"r38","l":"[自身]確率ガッツ","k":"guts","s":"self","u":"回","lo":5,"hi":10,"c":true,"t":["守護"]},{"id":"r39","l":"[5人][参戦]確定ガッツ","k":"guts","s":"party","u":"回","lo":1,"hi":2,"c":false,"t":["守護","支援"]},{"id":"r40","l":"[自身]確定ガッツ","k":"guts","s":"self","u":"回","lo":2,"hi":4,"c":false,"t":["守護"]},{"id":"r41","l":"[5人][参戦]回避率上昇","k":"evade","s":"party","u":"%","lo":15,"hi":30,"c":false,"t":["守護","支援"]},{"id":"r42","l":"[自身]回避率上昇","k":"evade","s":"self","u":"%","lo":40,"hi":55,"c":false,"t":["守護"]},{"id":"r43","l":"[5人][参戦]特殊回避","k":"spevade","s":"party","u":"回","lo":1,"hi":2,"c":false,"t":["守護","支援"]},{"id":"r44","l":"[自身]特殊回避","k":"spevade","s":"self","u":"回","lo":2,"hi":4,"c":false,"t":["守護"]},{"id":"r45","l":"[5人][参戦]ダメージ無効化","k":"nullify","s":"party","u":"回","lo":1,"hi":2,"c":false,"t":["守護","支援"]},{"id":"r46","l":"[自身]ダメージ無効化","k":"nullify","s":"self","u":"回","lo":2,"hi":4,"c":false,"t":["守護"]},{"id":"r47","l":"[5人][参戦]HP保護追加","k":"hpguard","s":"party","u":"%","lo":25,"hi":100,"c":false,"t":["回復","支援"]},{"id":"r48","l":"[自身]HP保護追加","k":"hpguard","s":"self","u":"%","lo":50,"hi":150,"c":false,"t":["回復"]},{"id":"r49","l":"[5人][参戦]HPブースト","k":"hpboost","s":"party","u":"%","lo":110,"hi":120,"c":false,"t":["回復","支援"]},{"id":"r50","l":"[自身]HPブースト","k":"hpboost","s":"self","u":"%","lo":135,"hi":150,"c":false,"t":["回復"]},{"id":"r51","l":"[5人][参戦]毎ターン開始時、HP回復","k":"heal","s":"party","u":"%","lo":1,"hi":10,"c":false,"t":["回復"]},{"id":"r52","l":"[自身]毎ターン開始時、HP回復","k":"heal","s":"self","u":"%","lo":5,"hi":20,"c":false,"t":["回復"]},{"id":"r53","l":"[5人][参戦]吸収付与","k":"drain","s":"party","u":"%","lo":10,"hi":20,"c":false,"t":["回復"]},{"id":"r54","l":"[自身]吸収付与","k":"drain","s":"self","u":"%","lo":35,"hi":50,"c":false,"t":["回復"]},{"id":"r55","l":"[5人][参戦]被回復量上昇","k":"healrecv","s":"party","u":"%","lo":10,"hi":20,"c":false,"t":["回復"]},{"id":"r56","l":"[自身]被回復量上昇","k":"healrecv","s":"self","u":"%","lo":35,"hi":50,"c":false,"t":["回復"]},{"id":"r57","l":"[敵全体][参戦]攻撃力低下","k":"e_atk","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r58","l":"[敵1体]攻撃力低下","k":"e_atk","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r59","l":"[最もHPが高い敵1体][参戦]攻撃力低下","k":"e_atk","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r60","l":"[最もHPが低い敵1体][参戦]攻撃力低下","k":"e_atk","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r61","l":"[敵全体][参戦]防御力低下","k":"e_def","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r62","l":"[敵1体][参戦]防御力低下","k":"e_def","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r63","l":"[最もHPが高い敵1体][参戦]防御力低下","k":"e_def","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r64","l":"[最もHPが低い敵1体][参戦]防御力低下","k":"e_def","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r65","l":"[敵全体][参戦]命中率低下","k":"e_hit","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r66","l":"[敵1体]命中率低下","k":"e_hit","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r67","l":"[最もHPが高い敵1体][参戦]命中率低下","k":"e_hit","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r68","l":"[最もHPが低い敵1体][参戦]命中率低下","k":"e_hit","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r69","l":"[敵全体][参戦]スキル発動率低下","k":"e_skrate","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r70","l":"[敵1体]スキル発動率低下","k":"e_skrate","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r71","l":"[最もHPが高い敵1体][参戦]スキル発動率低下","k":"e_skrate","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r72","l":"[最もHPが低い敵1体][参戦]スキル発動率低下","k":"e_skrate","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r73","l":"[敵全体][参戦]クリティカル率低下","k":"e_crit","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r74","l":"[敵1体]クリティカル率低下","k":"e_crit","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r75","l":"[最もHPが高い敵1体][参戦]クリティカル率低下","k":"e_crit","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r76","l":"[最もHPが低い敵1体][参戦]クリティカル率低下","k":"e_crit","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r77","l":"[敵全体][参戦]クリティカルダメージ低下","k":"e_critdmg","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r78","l":"[敵1体]クリティカルダメージ低下","k":"e_critdmg","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r79","l":"[最もHPが高い敵1体][参戦]クリティカルダメージ低下","k":"e_critdmg","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r80","l":"[最もHPが低い敵1体][参戦]クリティカルダメージ低下","k":"e_critdmg","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r81","l":"[敵全体][参戦]与ダメージ低下","k":"e_dealt","s":"enemy","u":"%","lo":10,"hi":20,"c":false,"t":["妨害"]},{"id":"r82","l":"[敵1体]与ダメージ低下","k":"e_dealt","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r83","l":"[最もHPが高い敵1体][参戦]与ダメージ低下","k":"e_dealt","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r84","l":"[最もHPが低い敵1体][参戦]与ダメージ低下","k":"e_dealt","s":"enemy","u":"%","lo":20,"hi":30,"c":true,"t":["妨害"]},{"id":"r85","l":"[自身]挑発(小)","k":"taunt","s":"self","u":"","lo":null,"hi":null,"c":false,"t":["特殊"]},{"id":"r86","l":"[自身]隠密(小)","k":"stealth","s":"self","u":"","lo":null,"hi":null,"c":false,"t":["特殊"]},{"id":"r87","l":"[パーティ]PT移動力上昇","k":"move","s":"party","u":"","lo":100,"hi":150,"c":false,"t":["特殊"]},{"id":"r88","l":"[パーティ]PT移動力低下","k":"movedown","s":"party","u":"","lo":100,"hi":150,"c":false,"t":["特殊"]},{"id":"r89","l":"[パーティ]ソーラードライブの効果上昇","k":"sd","s":"party","u":"%","lo":50,"hi":100,"c":false,"t":["特殊"]},{"id":"r90","l":"[パーティ][戦闘開始時]光GAUGE増加","k":"gauge","s":"party","u":"%","lo":50,"hi":100,"c":false,"t":["特殊"]},{"id":"r91","l":"[自身]自身が攻撃を行った直後、光GAUGE増加","k":"gauge","s":"self","u":"%","lo":10,"hi":20,"c":true,"t":["特殊"]},{"id":"r92","l":"[パーティ][ターン開始時]光GAUGE増加","k":"gauge","s":"party","u":"%","lo":30,"hi":50,"c":false,"t":["特殊"]},{"id":"r93","l":"[自身]自身がスキルを発動させた直後、光GAUGE増加","k":"gauge","s":"self","u":"%","lo":20,"hi":30,"c":true,"t":["特殊"]},{"id":"r94","l":"[自身]自身がクリティカルを発動させた直後、光GAUGE増加","k":"gauge","s":"self","u":"%","lo":20,"hi":30,"c":true,"t":["特殊"]}];
+const RS_BY = new Map(RS_LIST.map(r => [r.id, r]));
+const RS_MAX = 5;
+function rsVal(r, v){
+  if (!r || r.lo == null) return null;
+  const x = typeof v === "number" ? v : (typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);
+  if (!Number.isFinite(x)) return null;
+  return Math.round(Math.min(r.hi, Math.max(r.lo, x)) * 100) / 100;
+}
+function sanitizeRS(x){
+  const o = {};
+  if (!x || typeof x !== "object" || Array.isArray(x)) return o;
+  for (const [k, arr] of Object.entries(x).slice(0, 5000)){
+    const n = vNum(k); if (!isNo(n) || !Array.isArray(arr)) continue;
+    const l = arr.slice(0, RS_MAX).map(e => { const r = e && typeof e === "object" && typeof e.id === "string" ? RS_BY.get(e.id) : null; return r ? {id: r.id, v: rsVal(r, e.v)} : {id: "", v: null}; });
+    if (l.length) o[n] = l;
+  }
+  return o;
+}
 function sanitizeU(x){
-  const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}};
+  const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, rs:{}};
   if (!x || typeof x !== "object" || Array.isArray(x)) return u;
   u.own = noMap(x.own); u.made = noMap(x.made); u.del = noMap(x.del);
   u.mown = noMap(x.mown); u.mmax = noMap(x.mmax);
   u.teams = sanitizeTeams(x.teams);
+  u.rs = sanitizeRS(x.rs);
   if (x.ov && typeof x.ov === "object" && !Array.isArray(x.ov))
     for (const [k, v] of Object.entries(x.ov)){ const n = vNum(k), o = sanitizeChar(v, true); if (isNo(n) && o && Object.keys(o).length) u.ov[n] = o; }
   if (x.extra && typeof x.extra === "object" && !Array.isArray(x.extra))
@@ -761,7 +793,7 @@ function sanitizeU(x){
 
 /* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
 let MASTER = new Map();
-let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[]};
+let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[], rs:{}};
 const iconURL = {};
 const USER_FIELDS = ["own","made","ic"];
 const idb = (() => {
@@ -1045,6 +1077,8 @@ const EFFECTS = {
   e_skrate: ["スキル発動率低下", "弱体"], e_hit: ["命中率低下", "弱体"], e_act: ["行動回数減少", "弱体"], e_crit: ["クリティカル率低下", "弱体"],
   barrier:  ["防壁", "耐久"], atkadd: ["攻撃力に加算", "攻撃"], counterdmg: ["反撃ダメージ上昇", "攻撃"],
   attr:     ["攻撃属性追加", "その他"], move: ["移動力上昇", "その他"], skset: ["スキル発動率変更", "攻撃"],
+  hit:      ["命中率上昇", "攻撃"], defrate: ["防御発動率上昇", "耐久"], hpboost: ["HPブースト", "耐久"], healrecv: ["被回復量上昇", "耐久"],
+  e_critdmg: ["クリティカルダメージ低下", "弱体"], e_dealt: ["与ダメージ低下", "弱体"], stealth: ["隠密", "その他"], movedown: ["PT移動力低下", "その他"],
 };
 // 効果名（:の前）→ key。敵対象かどうかで低下系の行き先が変わる
 const NAME_RULES = [
@@ -1171,11 +1205,19 @@ const CAT_ORDER = ["攻撃", "弱体", "耐久", "その他"];
 const BASE = s => String(s || "").replace(/[\(（].*$/, "").replace(/^【[^】]*】/, "").trim();
 const effCache = new Map();
 function charEffects(c){
+  const rs = rsEffects(c.n);
   const det = detOf(c); const key = c.n + "|" + (det ? 1 : 0);
-  if (effCache.has(key)) return effCache.get(key);
+  if (effCache.has(key)) return rs.length ? effCache.get(key).concat(rs) : effCache.get(key);
   const top = det ? stagesOf(det)[0] : null;
   const list = top ? top[1].flatMap(l => parseLine(l)).filter(e => e.key) : [];
-  effCache.set(key, list); return list;
+  effCache.set(key, list); return rs.length ? list.concat(rs) : list;
+}
+function rsEffects(n){
+  const l = U.rs?.[n]; if (!l) return [];
+  const out = [];
+  for (const e of l){ const r = RS_BY.get(e.id); if (!r) continue;
+    out.push({key: r.k, val: e.v, unit: r.u, scope: r.s, n: 5, conditional: r.c, rs: true, text: `【百花錬成】${r.l}${e.v != null ? "：" + e.v + r.u : ""}`}); }
+  return out;
 }
 function memEffects(m){
   const useMax = U.mmax?.[m.id] || !U.mown?.[m.id];
@@ -1358,6 +1400,10 @@ function renderTeam(){
   $("tm-self").innerHTML = Object.entries(selfBy).map(([who, l]) => `<details><summary>${esc(who)}（${l.length}）</summary><ul class="tm-items">${l.map(e => `<li>${esc(EFFECTS[e.key][0])} ${esc(fmtVal(e.val, e.unit))}${e.conditional || e.dyn ? `<span class="tag">条件付き</span>` : ""}<br><small class="muted">${esc(e.text)}</small></li>`).join("")}</ul></details>`).join("") || `<p class="muted note">—</p>`;
   renderTeamSearch();
 }
+function renderRSRef(){
+  const t = $("rs-ball").value;
+  $("rs-ref").innerHTML = RS_LIST.filter(r => !t || r.t.includes(t)).map(r => `<tr><td>${esc(r.l)}</td><td class="r num">${r.lo == null ? "—" : esc(r.lo + "〜" + r.hi + r.u)}</td></tr>`).join("");
+}
 function renderTeamSearch(){
   const k = TF.key; const words = TF.q ? TF.q.toLowerCase().split(/\s+/).filter(Boolean) : [];
   const res = [];
@@ -1405,6 +1451,7 @@ function initTeamUI(){
     const i = Number(e.target.dataset.mi); if (!(i >= 0 && i < 5)) return;
     const id = vNum(e.target.value); await saveTeam(t => { t.mems[i] = isNo(id) ? id : null; });
   };
+  $("rs-ball").onchange = renderRSRef; renderRSRef();
   // ステージ
   $("st-cat").onchange = () => { stCat = $("st-cat").value; fillStageSel(); };
   $("st-sel").onchange = async e => {
@@ -1699,6 +1746,7 @@ function openSheet(n){
       <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${esc(c[k])}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
       <div id="cropper" hidden></div>
       ${detailHTML(c)}
+      ${canWrite ? `<section class="rs-sec" id="rs-sec"></section>` : ""}
       ${canWrite ? `<form id="edform" autocomplete="off"><div class="formgrid">${fieldsHTML("ed", c)}</div>
         <div class="actions"><button class="primary" type="submit">変更を保存</button><button class="ghost" type="button" id="ed-team">編成に入れる</button><button class="danger" type="button" id="ed-del">削除</button><span class="err" id="ed-err"></span></div>
         <div id="ed-confirm"></div></form>` : `<p class="note">閲覧のみです。</p>`}
@@ -1706,6 +1754,7 @@ function openSheet(n){
   s.hidden = false; $("scrim").hidden = false;
   $("sh-close").onclick = closeSheet;
   if (!canWrite) return;
+  renderRS(c);
   if ($("ic-set")) $("ic-set").onclick = () => startCrop(c);
   if ($("ic-del")) $("ic-del").onclick = async () => {
     refreshSheet = true;
@@ -1726,6 +1775,28 @@ function openSheet(n){
     $("ed-cancel").onclick = () => $("ed-confirm").innerHTML = "";
     $("ed-del2").onclick = async () => { try { await deleteChar(c); toast("削除しました"); closeSheet(); } catch(err){ writeError(err); } };
   };
+}
+const RS_GROUPS = ["攻撃","守護","回復","妨害","特殊"];
+function rsOptions(sel){
+  return `<option value="">（選ぶ）</option>` + RS_GROUPS.map(g => `<optgroup label="${g}">${RS_LIST.filter(r => r.t[0] === g || (g === "攻撃" && r.t[0] === "支援")).map(r => `<option value="${r.id}"${r.id === sel ? " selected" : ""}>${esc(r.l)}</option>`).join("")}</optgroup>`).join("");
+}
+function renderRS(c){
+  const box = $("rs-sec"); if (!box) return;
+  const l = U.rs?.[c.n] || [];
+  box.innerHTML = `<h3>百花錬成</h3><p class="note">専用装備（★6進化・最大レベル）の錬成で付いたアビリティを記録すると、編成の効果集計とたたき台に入ります。数値はwikiの幅の中に収めます。</p>`
+    + l.map((e, i) => { const r = RS_BY.get(e.id);
+        return `<div class="rs-row"><select data-rsi="${i}" aria-label="錬成${i + 1}枠目">${rsOptions(e.id)}</select>`
+          + `<input type="number" step="any" inputmode="decimal" data-rsv="${i}" aria-label="錬成${i + 1}枠目の数値" value="${e.v ?? ""}" ${r && r.lo != null ? `min="${r.lo}" max="${r.hi}" placeholder="${r.lo}〜${r.hi}"` : "disabled placeholder=\"—\""}>`
+          + `<span class="u">${esc(r ? r.u : "")}</span><button class="x" type="button" data-rsx="${i}" aria-label="この枠を消す">×</button></div>`; }).join("")
+    + (l.length < RS_MAX ? `<div class="actions" style="margin-top:8px"><button class="ghost" type="button" id="rs-add">＋ 枠を追加</button></div>` : "");
+  const save = async fn => {
+    await mutate(() => { const cur = (U.rs[c.n] || []).map(e => ({...e})); fn(cur); if (cur.length) U.rs[c.n] = cur; else delete U.rs[c.n]; U.rs = sanitizeRS(U.rs); });
+    renderRS(c);
+  };
+  if ($("rs-add")) $("rs-add").onclick = () => save(l => { if (l.length < RS_MAX) l.push({id: "", v: null}); });
+  box.querySelectorAll("[data-rsx]").forEach(b => b.onclick = () => save(l => { l.splice(Number(b.dataset.rsx), 1); }));
+  box.querySelectorAll("[data-rsi]").forEach(s => s.onchange = () => save(l => { const i = Number(s.dataset.rsi), r = RS_BY.get(s.value); l[i] = {id: r ? r.id : "", v: r && r.lo != null ? r.hi : null}; }));
+  box.querySelectorAll("[data-rsv]").forEach(inp => inp.onchange = () => save(l => { const i = Number(inp.dataset.rsv); if (l[i]) l[i].v = rsVal(RS_BY.get(l[i].id), inp.value); }));
 }
 function hl(s){
   s = String(s ?? "");
@@ -2148,14 +2219,14 @@ $("bk-export").onclick = async () => {
   // 自分の記録だけを書き出す（マスターの値は含めないので、後でマスターが直っても古い値で上書きしない）
   const data = {app:"galanthus", v:2, rev:DATA_REV, exportedAt:new Date().toISOString(),
     own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number), del: Object.keys(U.del).map(Number),
-    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [],
+    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [], rs: U.rs || {},
     ov: U.ov, extra: U.extra, icons};
   downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
   $("bk-msg").textContent = `書き出しました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(icons).length}枚）。`;
 };
 function parseBackup(data){
   if (!data || typeof data !== "object" || data.app !== "galanthus") throw new Error("not galanthus");
-  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: sanitizeTeams(data.teams)};
+  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: sanitizeTeams(data.teams), rs: sanitizeRS(data.rs)};
   if (data.ov || data.extra){ const x = sanitizeU(data); nu.ov = x.ov; nu.extra = x.extra; }
   else if (Array.isArray(data.chars)){
     // 古い形式（全キャラ入り）：マスターで空欄の項目だけ補い、マスターの値は上書きしない
