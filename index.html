@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-MGUAIz5uuh3AhBfFBTZjpjmdswIPRaVolKLno2ypbts='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wqPHcVqI8UUx4CAGmHHwV809gYia7ABurcOOyZhpnCE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -255,6 +255,42 @@ table.db tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--sunk) 4
 table.db tbody tr:nth-child(even) td.name{background:color-mix(in srgb, var(--sunk) 45%, var(--surface))}
 table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--accent-soft)}
 /* mobile card list */
+.team-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){ .team-grid{grid-template-columns:1fr} }
+.tm-right{display:flex;flex-direction:column;gap:16px;min-width:0}
+.tm-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tm-head select{flex:1 1 160px;min-width:0;padding:6px 8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:var(--fg)}
+.tm-namebox{display:flex;gap:6px;margin-top:8px}
+.tm-namebox input{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg)}
+.tm-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:12px}
+.slot{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg);cursor:pointer;min-width:0;position:relative}
+.slot .ic{width:36px;height:36px}
+.slot.empty{justify-content:center;color:var(--faint);border-style:dashed;min-height:54px}
+.slot.memslot{grid-column:1/-1;background:var(--sunk)}
+.sl-txt{min-width:0;display:flex;flex-direction:column}
+.sl-txt b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-txt small{font-size:11px;color:var(--muted)}
+.sl-x{position:absolute;top:2px;right:4px;font-size:16px;padding:0 4px}
+.tm-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.tm-meta .attr{width:auto}
+.tm-warn{margin:10px 0 0;padding:8px 10px 8px 26px;background:var(--danger-soft);color:var(--danger);border-radius:8px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.tm-h{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:16px 0 6px}
+.tm-eff td{vertical-align:top}
+.tm-eff tr.cat th{text-align:left;font-size:11px;color:var(--accent);padding-top:10px;border-bottom:1px solid var(--line)}
+.tm-eff details summary{cursor:pointer}
+.tm-items{list-style:none;margin:4px 0 6px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12px;white-space:normal}
+.tm-items .tag{margin-left:4px}
+.muted{color:var(--muted)}
+.tm-self details{font-size:13px;border-bottom:1px solid var(--line);padding:4px 0}
+.tm-self summary{cursor:pointer}
+.ts-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:520px;overflow:auto}
+.ts-list li{display:grid;grid-template-columns:28px 1fr auto auto;gap:8px;align-items:center;padding:5px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.ts-list .ic{width:28px;height:28px}
+.ts-txt{min-width:0;display:flex;flex-direction:column}
+.ts-txt b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ts-txt small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ts-val{font-weight:700;font-size:13px}
+.ts-list button{font-size:12px;padding:3px 10px}
 .mem-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:10px}
 .mem-list > li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .mem-list > li.owned{border-color:var(--accent)}
@@ -332,6 +368,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
     <button role="tab" id="tab-list" aria-selected="true" data-view="list">一覧</button>
     <button role="tab" id="tab-stats" aria-selected="false" data-view="stats">集計</button>
     <button role="tab" id="tab-mem" aria-selected="false" data-view="mem">メモリー</button>
+    <button role="tab" id="tab-team" aria-selected="false" data-view="team">編成</button>
     <button role="tab" id="tab-add" aria-selected="false" data-view="add">登録・管理</button>
     <span class="spacer"></span>
         <button class="ghost" id="btn-csv">CSVで書き出し</button>
@@ -411,6 +448,52 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
       <div class="panel">
         <h2>好きな物<small>属性別</small></h2>
         <div class="scroll"><table class="mini" id="t-like"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section id="view-team" hidden>
+    <div class="team-grid">
+      <div class="panel tm-left">
+        <div class="tm-head">
+          <select id="tm-sel" aria-label="編成を選ぶ"></select>
+          <button class="ghost" type="button" id="tm-new">新規</button>
+          <button class="ghost" type="button" id="tm-rename">名前</button>
+          <button class="ghost" type="button" id="tm-clear">空にする</button>
+          <button class="ghost" type="button" id="tm-del">削除</button>
+        </div>
+        <div class="tm-namebox" id="tm-namebox" hidden><input id="tm-name" maxlength="40" aria-label="編成の名前"><button class="primary" type="button" id="tm-nameok">保存</button><button class="ghost" type="button" id="tm-namecancel">やめる</button></div>
+        <div class="tm-slots" id="tm-slots"></div>
+        <label class="sel" style="margin-top:8px">メモリー <select id="tm-memsel"></select></label>
+        <div class="tm-meta" id="tm-meta"></div>
+        <ul class="tm-warn" id="tm-warn" hidden></ul>
+        <h3 class="tm-h">パーティ全体・敵への効果</h3>
+        <div class="scroll"><table class="mini tm-eff"><thead><tr><th>効果（押すと内訳）</th><th>常時</th><th>条件付き</th></tr></thead><tbody id="tm-effects"></tbody></table></div>
+        <h3 class="tm-h">自分だけにかかる効果</h3>
+        <div id="tm-self" class="tm-self"></div>
+        <p class="note">アビリティの文章を自動で読み取って合計した目安です。「〇倍」の効果は重ね方がゲームの仕様しだいなので、合計せずに最大値と件数を表示しています。効果の上限や重複のしかた、条件の達成はゲーム内の仕様によります。「条件付き」は、条件を満たしたときや状況で変わる効果です。</p>
+      </div>
+      <div class="tm-right">
+        <div class="panel">
+          <h2>効果で探す</h2>
+          <div class="trow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <select id="ts-key" aria-label="効果"></select>
+            <input id="ts-q" type="search" placeholder="名前で絞る" style="flex:1 1 140px;min-width:0;padding:5px 8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg)">
+          </div>
+          <div class="checks" style="margin-top:6px;font-size:12.5px"><label><input type="checkbox" class="mk" id="ts-owned" checked> 所持のみ</label><label><input type="checkbox" class="mk" id="ts-wide" checked> 全体・敵への効果のみ</label><label><input type="checkbox" class="mk" id="ts-nocond" checked> 条件付きを除く</label><span class="count" id="ts-count"></span></div>
+          <ul class="ts-list" id="ts-list"></ul>
+        </div>
+        <div class="panel">
+          <h2>たたき台を作る</h2>
+          <p class="note">選んだ方針で効果の合計が大きくなる5人とメモリーを、所持キャラから自動で選んで新しい編成として保存します。あくまで出発点です。</p>
+          <div class="trow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <label class="sel">方針 <select id="sg-preset"></select></label>
+            <label class="sel">属性 <select id="sg-attr"></select></label>
+            <label class="checks" style="font-size:12.5px"><input type="checkbox" class="mk" id="sg-owned" checked> 所持のみ</label>
+            <button class="primary" type="button" id="sg-go">たたき台を作る</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -609,6 +692,7 @@ function sanitizeU(x){
   if (!x || typeof x !== "object" || Array.isArray(x)) return u;
   u.own = noMap(x.own); u.made = noMap(x.made); u.del = noMap(x.del);
   u.mown = noMap(x.mown); u.mmax = noMap(x.mmax);
+  u.teams = sanitizeTeams(x.teams);
   if (x.ov && typeof x.ov === "object" && !Array.isArray(x.ov))
     for (const [k, v] of Object.entries(x.ov)){ const n = vNum(k), o = sanitizeChar(v, true); if (isNo(n) && o && Object.keys(o).length) u.ov[n] = o; }
   if (x.extra && typeof x.extra === "object" && !Array.isArray(x.extra))
@@ -618,7 +702,7 @@ function sanitizeU(x){
 
 /* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
 let MASTER = new Map();
-let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}};
+let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[]};
 const iconURL = {};
 const USER_FIELDS = ["own","made","ic"];
 const idb = (() => {
@@ -818,7 +902,7 @@ function statCell(c,k){
   return `<span class="stat">${esc(v)}<span class="g ${m.grade}">${m.grade}</span></span>`;
 }
 function render(){
-  if (view !== "list") { if (view==="stats") renderStats(); else if (view==="mem") renderMem(); return; }
+  if (view !== "list") { if (view==="stats") renderStats(); else if (view==="mem") renderMem(); else if (view==="team"){ renderTeamMemSelect(); renderTeam(); } return; }
   renderHead();
   let rows = chars.filter(matches);
   const k = sortKey, d = sortDir;
@@ -886,6 +970,362 @@ $("cardlist").addEventListener("click", async e => {
   if (e.target.dataset.act === "own"){ e.stopPropagation(); try { await patchChar(c, {own: !c.own}); } catch(err){ writeError(err); } return; }
   openSheet(c.n);
 });
+/* ===== アビリティ文章 → 効果データ ===== */
+// key: [表示名, 区分, 単位の既定]
+const EFFECTS = {
+  atk:      ["攻撃力上昇", "攻撃"], dmg: ["与ダメージ上昇", "攻撃"], skdmg: ["スキルダメージ上昇", "攻撃"],
+  boss:     ["ボスダメージ上昇", "攻撃"], weak: ["弱点属性ダメージ上昇", "攻撃"],
+  crit:     ["クリティカル率上昇", "攻撃"], critdmg: ["クリティカルダメージ上昇", "攻撃"],
+  skrate:   ["スキル発動率", "攻撃"], react: ["再行動率上昇", "攻撃"], multi: ["連撃", "攻撃"],
+  chase:    ["追撃", "攻撃"], counter: ["反撃", "攻撃"], intercept: ["迎撃", "攻撃"], interceptdmg: ["迎撃ダメージ上昇", "攻撃"],
+  sd:       ["ソーラードライブ効果上昇", "その他"], gauge: ["光GAUGE増加", "その他"],
+  def:      ["防御力上昇", "耐久"], dmgcut: ["被ダメージ低下", "耐久"], nullify: ["ダメージ無効化", "耐久"],
+  guts:     ["ガッツ", "耐久"], hpguard: ["HP保護", "耐久"], evade: ["回避率上昇", "耐久"], spevade: ["特殊回避", "耐久"],
+  taunt:    ["挑発", "耐久"], heal: ["回復", "耐久"], drain: ["吸収付与", "耐久"], hpkeep: ["HP維持", "耐久"],
+  e_def:    ["防御力低下", "弱体"], e_dmg: ["被ダメージ上昇", "弱体"], e_atk: ["攻撃力低下", "弱体"],
+  e_skrate: ["スキル発動率低下", "弱体"], e_hit: ["命中率低下", "弱体"], e_act: ["行動回数減少", "弱体"], e_crit: ["クリティカル率低下", "弱体"],
+  barrier:  ["防壁", "耐久"], atkadd: ["攻撃力に加算", "攻撃"], counterdmg: ["反撃ダメージ上昇", "攻撃"],
+  attr:     ["攻撃属性追加", "その他"], move: ["移動力上昇", "その他"], skset: ["スキル発動率変更", "攻撃"],
+};
+// 効果名（:の前）→ key。敵対象かどうかで低下系の行き先が変わる
+const NAME_RULES = [
+  [/(?<!迎撃|反撃|与)攻撃力上昇$/, "atk"], [/(?<!被)与ダメージ上昇$/, "dmg"], [/スキルダメージ上昇$/, "skdmg"], [/ボスダメージ上昇$/, "boss"],
+  [/弱点属性ダメージ上昇$/, "weak"], [/クリティカル率(上昇|変更)$/, "crit"], [/クリティカルダメージ上昇$/, "critdmg"],
+  [/スキル発動率(変更)?$/, "skrate"], [/再行動率(上昇|変更)$/, "react"], [/迎撃ダメージ上昇$/, "interceptdmg"], [/反撃ダメージ上昇$/, "counterdmg"],
+  [/ソーラードライブの効果上昇$/, "sd"], [/光GAUGE増加$/, "gauge"],
+  [/防御力上昇$/, "def"], [/被ダメージ低下$/, "dmgcut"], [/HP保護(追加)?$/, "hpguard"], [/(確定|確率)?ガッツ$/, "guts"],
+  [/回避率上昇$/, "evade"], [/特殊回避$/, "spevade"], [/吸収付与$/, "drain"],
+  [/防御力低下$/, "e_def"], [/被ダメージ上昇$/, "e_dmg"], [/攻撃力低下$/, "e_atk"], [/スキル発動率低下$/, "e_skrate"],
+  [/命中率低下$/, "e_hit"], [/行動回数減少$/, "e_act"], [/クリティカル率低下$/, "e_crit"],
+  [/攻撃属性追加$/, "attr"], [/PT移動力上昇$/, "move"],
+];
+const TRIGGER = /(次ターン|たび|直前|直後|開始時|終了時|以上なら|未満なら|以下なら|場合|ターン経過|受けた|行った|発動した|撃破|戦闘不能|中、|毎ターン|確率で(?!反撃|迎撃))/;
+function parseValue(v){
+  v = v.replace(/\s+/g, "");
+  let m;
+  if ((m = v.match(/^(\d+(?:\.\d+)?)(%|倍|回)/))) return {val: Number(m[1]), unit: m[2], dyn: false};
+  if ((m = v.match(/(\d+(?:\.\d+)?)(%|倍)/))) return {val: Number(m[1]), unit: m[2], dyn: true};  // 「現在HP/最大HP」×50% など
+  return {val: null, unit: "", dyn: true};
+}
+function scopeOf(tgt){
+  if (!tgt) return {scope: "party", n: 5, cond: ""};
+  if (/^自身$/.test(tgt)) return {scope: "self", cond: ""};
+  if (/自身$/.test(tgt)) return {scope: "self", cond: tgt.replace(/の?自身$/, "")};
+  if (/敵/.test(tgt) && !/人$/.test(tgt)) return {scope: "enemy", cond: /^敵(全体|1体)$/.test(tgt) ? "" : tgt};
+  let m = tgt.match(/^(\d+)人$/); if (m) return {scope: "party", n: Number(m[1]), cond: ""};
+  m = tgt.match(/(\d+)人$/); if (m) return {scope: "party", n: Number(m[1]), cond: tgt.replace(/\d+人$/, "")};
+  if (/討伐開始時/.test(tgt)) return {scope: "misc", cond: ""};
+  return {scope: "party", n: 5, cond: tgt};
+}
+function effectFromSeg(seg, scope){
+  seg = seg.replace(/^(戦闘|討伐)終了まで/, "").replace(/\s+/g, "").trim();
+  let m;
+  let prob = "";
+  if ((m = seg.match(/^(\d+)%の確率で(.+)$/)) && !/^(反撃|迎撃)/.test(m[2])){ prob = m[1] + "%"; seg = m[2]; }
+  // 名前:値
+  if ((m = seg.match(/^([^:：]+?)\s*[:：](.+)$/))){
+    const name = m[1].replace(/\(上限解放\)/, "").replace(/※/g, "").trim();
+    for (let [re, key] of NAME_RULES){ const mm = name.match(re); if (mm){
+      const head = name.slice(0, mm.index);
+      const v = key === "attr" ? {val: null, unit: "", dyn: false} : parseValue(m[2]);
+      if (key === "skrate" && v.unit === "%") key = "skset";
+      return {key, ...v, ul: /上限解放/.test(m[1]), head, prob, note: key === "attr" ? m[2].trim() : ((m[2].match(/\(([^)]*)\)\s*$/)||[])[1] || "")};
+    } }
+    return null;
+  }
+  if ((m = seg.match(/^防壁(\d+)%/))) return {key: "barrier", val: +m[1], unit: "%"};
+  if ((m = seg.match(/^(双)?連撃(\d+)%/))) return {key: "multi", val: +m[2], unit: "%", note: m[1] ? "双連撃" : ""};
+  if ((m = seg.match(/^追撃(\d+)%/))) return {key: "chase", val: +m[1], unit: "%"};
+  if ((m = seg.match(/(PT移動力|防御力)の(\d+)%を攻撃力に追加/))) return {key: "atkadd", val: +m[2], unit: "%", note: m[1] + "から"};
+  if ((m = seg.match(/(\d+)回ダメージ無効化|ダメージ無効化(\d+)回/))) return {key: "nullify", val: +(m[1]||m[2]), unit: "回"};
+  if ((m = seg.match(/(\d+)%の確率で反撃(\d+(?:\.\d+)?)倍/))) return {key: "counter", val: +m[2], unit: "倍", note: m[1] + "%"};
+  if ((m = seg.match(/(\d+)%の確率で迎撃(\d+(?:\.\d+)?)倍/))) return {key: "intercept", val: +m[2], unit: "倍", note: m[1] + "%"};
+  if ((m = seg.match(/(全体|割合)追撃(?:\((小|中|大)\))?(\d+)?%?/))) return {key: "chase", val: m[3] ? +m[3] : null, unit: m[3] ? "%" : "", note: m[1] + (m[2] ? "(" + m[2] + ")" : "")};
+  if ((m = seg.match(/^挑発(?:\((.)\))?/))) return {key: "taunt", val: null, unit: "", note: m[1] || ""};
+  if ((m = seg.match(/最大HPの(\d+)%(まで)?(HPを維持|回復)/))) return m[3] === "回復" ? {key: "heal", val: +m[1], unit: "%"} : {key: "hpkeep", val: +m[1], unit: "%"};
+  return null;
+}
+function parseLine(line){
+  const raw = String(line || "").normalize("NFKC").replace(/\s*[:：]\s*/g, ":").trim();
+  if (!raw || /^-{3,}|^※|^《/.test(raw)) return [];
+  let m = raw.match(/^\[([^\]]+)\]((?:\[[^\]]+\])*)(.*)$/);
+  let tgt = "", tags = "", rest = raw;
+  if (m){ tgt = m[1]; tags = m[2].replace(/\]\[/g, "・").replace(/[\[\]]/g, ""); rest = m[3]; }
+  else {
+    // 旧形式
+    let o;
+    const OLD = {"攻撃力":"atk","防御力":"def","スキルダメージ":"skdmg","クリティカルダメージ":"critdmg","クリティカル攻撃発生率":"crit","ボスに与えるダメージ":"boss","弱点属性の敵に対するダメージ":"weak","スキル発動率":"skrate"};
+    if ((o = raw.match(/(パーティー?メンバー(?:全員)?|自身)の(攻撃力|防御力|スキルダメージ|クリティカルダメージ|クリティカル攻撃発生率|ボスに与えるダメージ|弱点属性の敵に対するダメージ|スキル発動率)が(\d+(?:\.\d+)?)(%|倍)(?:上昇|増加)/))){
+      const self = o[1] === "自身";
+      return [mk(OLD[o[2]], +o[3], o[4], self ? {scope: "self", cond: ""} : {scope: "party", n: 5, cond: (raw.match(/(.属性)のパーティメンバー/)||[])[1] || ""}, raw, {pre: /好感度|発動回数|に応じ/.test(raw) ? "条件あり" : ""})];
+    }
+    if ((o = raw.match(/敵(\d+)体の攻撃力を(\d+)%低下/))) return [mk("e_atk", +o[2], "%", {scope: "enemy", cond: o[1] + "体"}, raw)];
+    if (/敵全員の攻撃対象を自身に引きつける/.test(raw)) return [mk("taunt", null, "", {scope: "self", cond: ""}, raw)];
+    if ((o = raw.match(/自身の最大HPの(\d+)%回復/))) return [mk("heal", +o[1], "%", {scope: "self", cond: ""}, raw)];
+    if ((o = raw.match(/(\d+)回まで敵の攻撃を特殊回避/))) return [mk("spevade", +o[1], "回", {scope: "self", cond: ""}, raw)];
+    if ((o = raw.match(/(\d+)%の確率で(\d+)回まで戦闘不能にならず/))) return [mk("guts", +o[2], "回", {scope: "self", cond: ""}, raw, {note: "確率" + o[1] + "%"})];
+    if ((o = raw.match(/最大HPの(\d+)%まで回復してHPを維持/))) return [mk("hpkeep", +o[1], "%", {scope: "self", cond: ""}, raw)];
+    if ((o = raw.match(/ソーラードライブの効果が(\d+)%上昇/))) return [mk("sd", +o[1], "%", {scope: "party", n: 5, cond: ""}, raw)];
+    if ((o = raw.match(/(\d+)%の確率で自身は再行動/))) return [mk("react", +o[1], "%", {scope: "self", cond: ""}, raw)];
+    if ((o = raw.match(/パーティの移動力が(\d+)増加|PT移動力上昇[:：](\d+)/))) return [mk("move", +(o[1]||o[2]), "", {scope: "party", n: 5, cond: ""}, raw)];
+    if ((o = raw.match(/パーティの移動力の(\d+)%を追加/))) return [mk("atkadd", +o[1], "%", {scope: "party", n: 5, cond: ""}, raw, {note: "PT移動力から"})];
+    if ((o = raw.match(/パーティメンバーのスキル発動率が.*?最大(\d+(?:\.\d+)?)倍/))) return [mk("skrate", +o[1], "倍", {scope: "party", n: 5, cond: "好感度"}, raw)];
+    if ((o = raw.match(/敵(?:全体|全員)?の(攻撃力|防御力)が(\d+)%(?:低下|減少)/))) return [mk(o[1] === "攻撃力" ? "e_atk" : "e_def", +o[2], "%", {scope: "enemy", cond: ""}, raw)];
+    if ((o = raw.match(/^光GAUGE増加[:：](\d+)%/))) return [mk("gauge", +o[1], "%", {scope: "party", n: 5, cond: ""}, raw)];
+    if ((o = raw.match(/^ソーラードライブの効果上昇[:：](\d+)%/))) return [mk("sd", +o[1], "%", {scope: "party", n: 5, cond: ""}, raw)];
+    if ((o = raw.match(/ボスに対して与えるダメージが(\d+)%増加/))) return [mk("boss", +o[1], "%", {scope: "self", cond: ""}, raw)];
+    if ((o = raw.match(/攻撃を回避する/))) return [mk("evade", null, "", {scope: "self", cond: ""}, raw)];
+    return [{key: null, text: raw}];
+  }
+  const sc = scopeOf(tgt);
+  // 「[自身]…」を付与：対象のメンバーにかかる効果として扱う（条件付き）
+  let g;
+  if ((g = rest.match(/^「(.*)」を付与$/))){
+    return parseLine(g[1]).filter(e => e.key).map(e => ({...e, scope: sc.scope === "self" ? "self" : "party", n: sc.n || 5, cond: [sc.cond, "付与", e.cond].filter(Boolean).join("・"), conditional: true, text: raw}));
+  }
+  const segs = rest.split(/、(?![^(（]*[)）])/).map(s => s.trim()).filter(Boolean);
+  const out = []; const pre = [];
+  for (const seg of segs){
+    const e = effectFromSeg(seg, sc.scope);
+    if (e){
+      let key = e.key;
+      if (sc.scope === "enemy" && key === "skrate") key = "e_skrate";
+      const head = (e.head || "").trim();
+      const preTxt = [pre.join("、"), head].filter(Boolean).join("、");
+      out.push(mk(key, e.val, e.unit, sc, raw, {tags, pre: preTxt, ul: e.ul, note: [e.prob ? "確率" + e.prob : "", e.note].filter(Boolean).join("・"), dyn: e.dyn || /に応じ/.test(head)}));
+    } else if (!out.length) pre.push(seg);
+  }
+  if (!out.length) return [{key: null, text: raw}];
+  return out;
+}
+function mk(key, val, unit, sc, text, x = {}){
+  const condParts = [sc.cond, x.tags, x.pre].filter(Boolean);
+  const cond = condParts.join("・");
+  const ramp = /ターン経過/.test(x.pre || "");
+  const conditional = !!(x.pre && !ramp) || !!(sc.cond && !/^\d+人$/.test(sc.cond)) || /参戦/.test(x.tags || "") === false && !!x.tags && !/ターン目まで|1ターン目のみ/.test(x.tags);
+  return {key, val, unit, scope: sc.scope, n: sc.n || 0, cond, ramp, conditional, dyn: !!x.dyn, ul: !!x.ul, note: x.note || "", text};
+}
+
+
+/* ===================== 編成支援 ===================== */
+const CAT_ORDER = ["攻撃", "弱体", "耐久", "その他"];
+const BASE = s => String(s || "").replace(/[\(（].*$/, "").replace(/^【[^】]*】/, "").trim();
+const effCache = new Map();
+function charEffects(c){
+  const det = detOf(c); const key = c.n + "|" + (det ? 1 : 0);
+  if (effCache.has(key)) return effCache.get(key);
+  const top = det ? stagesOf(det)[0] : null;
+  const list = top ? top[1].flatMap(l => parseLine(l)).filter(e => e.key) : [];
+  effCache.set(key, list); return list;
+}
+function memEffects(m){
+  const useMax = U.mmax?.[m.id] || !U.mown?.[m.id];
+  const lines = (useMax && m.abMax.length) ? m.abMax : (m.ab.length ? m.ab : m.abMax);
+  return lines.flatMap(l => parseLine(l)).filter(e => e.key);
+}
+function fmtVal(v, unit){ return v == null ? "" : (Math.round(v * 100) / 100) + unit; }
+function emptyTeam(name){ return {name: name || "編成1", m: [null, null, null, null, null], mem: null}; }
+function sanitizeTeams(x){
+  if (!Array.isArray(x)) return [];
+  return x.slice(0, 50).filter(t => t && typeof t === "object").map(t => ({
+    name: vStr(t.name, 40) || "編成",
+    m: Array.from({length: 5}, (_, i) => { const n = vNum(Array.isArray(t.m) ? t.m[i] : null); return isNo(n) ? n : null; }),
+    mem: isNo(vNum(t.mem)) ? vNum(t.mem) : null,
+  }));
+}
+let teamIdx = 0;
+try { teamIdx = Math.max(0, Number(localStorage.getItem("galanthus-team")) || 0); } catch(e){}
+function teams(){ return U.teams && U.teams.length ? U.teams : [emptyTeam()]; }
+function curTeam(){ const t = teams(); if (teamIdx >= t.length) teamIdx = 0; return t[teamIdx]; }
+async function saveTeam(fn){
+  await mutate(() => { if (!U.teams || !U.teams.length) U.teams = [emptyTeam()]; if (teamIdx >= U.teams.length) teamIdx = 0; fn(U.teams[teamIdx], U.teams); U.teams = sanitizeTeams(U.teams); });
+  try { localStorage.setItem("galanthus-team", teamIdx); } catch(e){}
+}
+async function addToTeam(n){
+  const t = curTeam(); if (t.m.includes(n)){ toast("すでに編成に入っています"); return; }
+  const i = t.m.indexOf(null); if (i < 0){ toast("5人埋まっています。先に誰かを外してください"); return; }
+  await saveTeam(tt => { tt.m[i] = n; }); toast("編成に入れました");
+}
+
+/* --- 集計 --- */
+function teamSummary(t){
+  const byNo = new Map(chars.map(c => [c.n, c]));
+  const members = t.m.map(n => n != null ? byNo.get(n) : null);
+  const mem = t.mem != null ? MEM.find(m => m.id === t.mem) : null;
+  const sources = [];
+  members.forEach((c, i) => { if (c) sources.push({who: c.nm, slot: i, effs: charEffects(c)}); });
+  if (mem) sources.push({who: "メモリー：" + mem.nm, slot: 5, effs: memEffects(mem)});
+  const agg = {}; const selfList = [];
+  for (const s of sources) for (const e of s.effs){
+    if (e.scope === "self"){ selfList.push({...e, who: s.who}); continue; }
+    if (e.scope !== "party" && e.scope !== "enemy") continue;
+    const a = agg[e.key] ||= {key: e.key, always: 0, cond: 0, mults: [], multsCond: [], unit: e.unit, items: []};
+    const isCond = e.conditional || e.dyn;
+    if (e.unit === "倍" && e.val != null){ (isCond ? a.multsCond : a.mults).push(e.val); }
+    else if (e.val != null){ if (isCond) a.cond += e.val; else a.always += e.val; }
+    else if (!isCond) a.always += 0;
+    if (e.unit && !a.unit) a.unit = e.unit;
+    a.items.push({...e, who: s.who, isCond});
+  }
+  const attrs = {}; members.forEach(c => { if (c) attrs[c.a] = (attrs[c.a] || 0) + 1; });
+  const types = {}; members.forEach(c => { if (c && c.tp) types[c.tp] = (types[c.tp] || 0) + 1; });
+  const warn = [];
+  const bases = members.filter(Boolean).map(c => BASE(c.nm)); const dup = [...new Set(bases.filter((b, i) => bases.indexOf(b) !== i))];
+  if (dup.length) warn.push(`同じキャラの別衣装が入っています（${dup.join("、")}）。ゲームでは同時に編成できない場合があります。`);
+  const notOwn = members.filter(c => c && !c.own).map(c => c.nm);
+  if (notOwn.length) warn.push(`未所持のキャラが入っています（${notOwn.join("、")}）。`);
+  if (mem && !U.mown?.[mem.id]) warn.push("未所持のメモリーです（最大解放時の効果で計算しています）。");
+  const has = k => agg[k] && (agg[k].always > 0 || agg[k].cond > 0 || agg[k].items.length);
+  if (members.filter(Boolean).length){
+    if (!["nullify","guts","hpguard","barrier","dmgcut"].some(has)) warn.push("パーティ全体にかかる耐久系の効果（ダメージ無効化・ガッツ・HP保護・防壁・被ダメージ低下）がありません。");
+    if (!["e_def","e_dmg"].some(has)) warn.push("敵の防御力低下・被ダメージ上昇がありません。");
+    if (!has("skrate")) warn.push("パーティ全体のスキル発動率アップがありません。");
+  }
+  const totalStat = members.reduce((s, c) => s + (c ? c.tot || 0 : 0), 0);
+  return {members, mem, agg, selfList, attrs, types, warn, totalStat};
+}
+/* --- たたき台の自動提案 --- */
+const PRESETS = {
+  boss:  {label: "火力（ボス向け）", w: {atk:1, dmg:1, skdmg:.8, boss:1.2, weak:.6, crit:.4, critdmg:.4, skrate:1.2, react:1, multi:.5, chase:.3, e_def:1.1, e_dmg:1.1, nullify:.15, guts:.1, hpguard:.15}},
+  tank:  {label: "耐久", w: {nullify:1.2, guts:1, hpguard:1, barrier:1, dmgcut:1, def:.6, heal:.7, evade:.5, spevade:.6, e_atk:1, e_hit:.5, e_skrate:.7, atk:.2, skrate:.3}},
+  bal:   {label: "バランス", w: {atk:.7, dmg:.7, skdmg:.5, boss:.7, skrate:1, react:.7, e_def:.8, e_dmg:.8, nullify:.7, guts:.6, hpguard:.6, barrier:.5, dmgcut:.5, heal:.4, e_atk:.5}},
+};
+function norm(a){
+  const v = a.always + .5 * a.cond;
+  if (a.unit === "倍") return (a.mults.reduce((s, v) => s + v - 1, 0) + .5 * a.multsCond.reduce((s, v) => s + v - 1, 0)) * 100;
+  if (a.unit === "回") return v * 25;
+  return v;
+}
+function scoreTeam(t, w){
+  const s = teamSummary(t); let sc = 0;
+  for (const [k, a] of Object.entries(s.agg)) if (w[k]) sc += w[k] * Math.sqrt(Math.max(0, norm(a)));
+  for (const e of s.selfList) if (w[e.key] && e.val != null) sc += .2 * w[e.key] * Math.sqrt(e.unit === "倍" ? (e.val - 1) * 100 : e.unit === "回" ? e.val * 25 : e.val);
+  return sc;
+}
+function suggestTeam(presetKey, opts){
+  const w = PRESETS[presetKey].w;
+  let pool = chars.filter(c => (!opts.owned || c.own) && (!opts.attr || c.a === opts.attr) && charEffects(c).length);
+  // 候補を単体の点数で上位に絞ってから組み合わせを探す
+  const solo = pool.map(c => ({c, s: scoreTeam({m: [c.n, null, null, null, null], mem: null}, w)})).sort((a, b) => b.s - a.s).slice(0, 120).map(x => x.c);
+  const t = {m: [null, null, null, null, null], mem: null};
+  for (let i = 0; i < 5; i++){
+    let best = null, bs = -1;
+    const used = new Set(t.m.filter(Boolean).map(n => BASE(chars.find(c => c.n === n).nm)));
+    for (const c of solo){ if (t.m.includes(c.n) || used.has(BASE(c.nm))) continue;
+      t.m[i] = c.n; const s = scoreTeam(t, w); if (s > bs){ bs = s; best = c.n; } t.m[i] = null; }
+    t.m[i] = best;
+  }
+  // 1人ずつ入れ替えて良くなるなら入れ替える
+  for (let pass = 0; pass < 2; pass++) for (let i = 0; i < 5; i++){
+    let bs = scoreTeam(t, w), keep = t.m[i];
+    for (const c of solo){ if (t.m.includes(c.n)) continue;
+      const others = new Set(t.m.filter((n, j) => n && j !== i).map(n => BASE(chars.find(x => x.n === n).nm))); if (others.has(BASE(c.nm))) continue;
+      t.m[i] = c.n; const s = scoreTeam(t, w); if (s > bs){ bs = s; keep = c.n; } }
+    t.m[i] = keep;
+  }
+  const memPool = MEM.filter(m => !opts.owned || U.mown?.[m.id]);
+  let bm = null, bms = scoreTeam(t, w);
+  for (const m of memPool){ t.mem = m.id; const s = scoreTeam(t, w); if (s > bms){ bms = s; bm = m.id; } }
+  t.mem = bm;
+  return t;
+}
+
+/* --- 画面 --- */
+const TF = {key: "atk", owned: true, wide: true, nocond: true, q: "", preset: "boss", sattr: "", sowned: true};
+function teamEffectOptions(){ return Object.entries(EFFECTS).sort((a, b) => CAT_ORDER.indexOf(a[1][1]) - CAT_ORDER.indexOf(b[1][1])).map(([k, v]) => `<option value="${k}"${k === TF.key ? " selected" : ""}>${esc(v[1])}：${esc(v[0])}</option>`).join(""); }
+function renderTeam(){
+  const t = curTeam(); const s = teamSummary(t);
+  $("tm-sel").innerHTML = teams().map((x, i) => `<option value="${i}"${i === teamIdx ? " selected" : ""}>${esc(x.name)}</option>`).join("");
+  $("tm-slots").innerHTML = s.members.map((c, i) => c
+    ? `<div class="slot" data-i="${i}">${iconHTML(c)}<div class="sl-txt"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(c.tp || "")} ${c.own ? "" : "・未所持"}</small></div><button class="x sl-x" type="button" data-rm="${i}" aria-label="外す">×</button></div>`
+    : `<div class="slot empty" data-i="${i}">空き</div>`).join("")
+    + (s.mem ? `<div class="slot memslot"><div class="sl-txt"><b>${esc(s.mem.nm)}</b><small>メモリー・${esc(s.mem.r)}${U.mown?.[s.mem.id] ? (U.mmax?.[s.mem.id] ? "・最大解放" : "・未解放") : "・未所持"}</small></div><button class="x sl-x" type="button" data-rmmem="1" aria-label="外す">×</button></div>`
+             : `<div class="slot memslot empty">メモリー：空き</div>`);
+  const attrTxt = Object.entries(s.attrs).map(([a, n]) => `<span class="attr ${esc(a)}">${esc(a)}</span>×${n}`).join("　") || "—";
+  const typeTxt = Object.entries(s.types).map(([a, n]) => `${esc(a)}×${n}`).join("　") || "—";
+  $("tm-meta").innerHTML = `<span>属性：${attrTxt}</span><span>タイプ：${typeTxt}</span><span>総合力合計：<b class="num">${s.totalStat}</b></span>`;
+  $("tm-warn").innerHTML = s.warn.map(w => `<li>${esc(w)}</li>`).join("");
+  $("tm-warn").hidden = !s.warn.length;
+  const rows = Object.values(s.agg).sort((a, b) => CAT_ORDER.indexOf(EFFECTS[a.key][1]) - CAT_ORDER.indexOf(EFFECTS[b.key][1]) || norm(b) - norm(a));
+  let cat = "";
+  $("tm-effects").innerHTML = rows.length ? rows.map(a => {
+    const [label, c] = EFFECTS[a.key];
+    const head = c !== cat ? `<tr class="cat"><th colspan="3">${esc(c)}</th></tr>` : ""; cat = c;
+    const mlist = l => l.length ? (l.length === 1 ? fmtVal(l[0], "倍") : `最大${fmtVal(Math.max(...l), "倍")}（${l.length}件）`) : "";
+    const alw = a.unit === "倍" ? mlist(a.mults) : (a.always ? fmtVal(a.always, a.unit) : (a.items.some(i => !i.isCond) ? "あり" : ""));
+    const cnd = a.unit === "倍" ? mlist(a.multsCond) : (a.cond ? fmtVal(a.cond, a.unit) : (a.items.some(i => i.isCond) ? "あり" : ""));
+    const detail = a.items.map(i => `<li><b>${esc(i.who)}</b>：${esc(i.text)}${i.n && i.n < 5 && i.scope === "party" ? `<span class="tag">${i.n}人</span>` : ""}${i.isCond ? `<span class="tag">条件付き</span>` : ""}</li>`).join("");
+    return head + `<tr><td><details><summary>${esc(label)}</summary><ul class="tm-items">${detail}</ul></details></td><td class="r num">${esc(alw)}</td><td class="r num muted">${esc(cnd)}</td></tr>`;
+  }).join("") : `<tr><td colspan="3" class="muted">キャラを入れると、パーティ全体にかかる効果と敵への効果をまとめて表示します。</td></tr>`;
+  const selfBy = {}; for (const e of s.selfList) (selfBy[e.who] ||= []).push(e);
+  $("tm-self").innerHTML = Object.entries(selfBy).map(([who, l]) => `<details><summary>${esc(who)}（${l.length}）</summary><ul class="tm-items">${l.map(e => `<li>${esc(EFFECTS[e.key][0])} ${esc(fmtVal(e.val, e.unit))}${e.conditional || e.dyn ? `<span class="tag">条件付き</span>` : ""}<br><small class="muted">${esc(e.text)}</small></li>`).join("")}</ul></details>`).join("") || `<p class="muted note">—</p>`;
+  renderTeamSearch();
+}
+function renderTeamSearch(){
+  const k = TF.key; const words = TF.q ? TF.q.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  const res = [];
+  for (const c of chars){
+    if (TF.owned && !c.own) continue;
+    if (words.length && !words.every(w => c.nm.toLowerCase().includes(w))) continue;
+    const effs = charEffects(c).filter(e => e.key === k && (!TF.wide || e.scope !== "self") && (!TF.nocond || !(e.conditional || e.dyn)));
+    if (!effs.length) continue;
+    const best = effs.reduce((a, b) => ((b.val ?? 0) > (a.val ?? 0) ? b : a));
+    res.push({c, e: best, n: effs.length});
+  }
+  res.sort((a, b) => (b.e.val ?? 0) - (a.e.val ?? 0) || a.c.n - b.c.n);
+  $("ts-count").textContent = `${res.length}体`;
+  const inTeam = new Set(curTeam().m);
+  $("ts-list").innerHTML = res.slice(0, 60).map(({c, e}) => `<li data-n="${esc(c.n)}">${iconHTML(c)}<div class="ts-txt"><b>${esc(c.nm)}</b><small>${esc(e.text)}</small></div><span class="ts-val num">${esc(fmtVal(e.val, e.unit) || "あり")}</span><button class="ghost" type="button" data-add="${esc(c.n)}"${inTeam.has(c.n) ? " disabled" : ""}>${inTeam.has(c.n) ? "編成中" : "入れる"}</button></li>`).join("") || `<li class="muted">条件に合うキャラがいません。</li>`;
+}
+function initTeamUI(){
+  $("ts-key").innerHTML = teamEffectOptions();
+  $("ts-key").onchange = e => { TF.key = e.target.value; renderTeamSearch(); };
+  $("ts-owned").onchange = e => { TF.owned = e.target.checked; renderTeamSearch(); };
+  $("ts-wide").onchange = e => { TF.wide = e.target.checked; renderTeamSearch(); };
+  $("ts-nocond").onchange = e => { TF.nocond = e.target.checked; renderTeamSearch(); };
+  let qt2; $("ts-q").oninput = e => { clearTimeout(qt2); qt2 = setTimeout(() => { TF.q = e.target.value.trim(); renderTeamSearch(); }, 150); };
+  $("ts-list").onclick = e => { const n = Number(e.target.dataset.add); if (isNo(n)) addToTeam(n); else { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); } };
+  $("tm-slots").onclick = async e => {
+    if (e.target.dataset.rm != null){ const i = Number(e.target.dataset.rm); await saveTeam(t => { t.m[i] = null; }); return; }
+    if (e.target.dataset.rmmem){ await saveTeam(t => { t.mem = null; }); return; }
+    const sl = e.target.closest(".slot[data-i]"); if (!sl) return;
+    const n = curTeam().m[Number(sl.dataset.i)]; if (n != null) openSheet(n); else $("ts-q").focus();
+  };
+  $("tm-sel").onchange = e => { teamIdx = Number(e.target.value) || 0; try { localStorage.setItem("galanthus-team", teamIdx); } catch(err){} renderTeam(); };
+  $("tm-new").onclick = async () => { await mutate(() => { U.teams = teams().slice(); U.teams.push(emptyTeam("編成" + (U.teams.length + 1))); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); }); };
+  $("tm-rename").onclick = () => {
+    const box = $("tm-namebox"); box.hidden = false; $("tm-name").value = curTeam().name; $("tm-name").focus();
+  };
+  $("tm-nameok").onclick = async () => { const v = $("tm-name").value.trim(); if (v) await saveTeam(t => { t.name = v; }); $("tm-namebox").hidden = true; };
+  $("tm-namecancel").onclick = () => { $("tm-namebox").hidden = true; };
+  $("tm-clear").onclick = async () => { await saveTeam(t => { t.m = [null, null, null, null, null]; t.mem = null; }); };
+  $("tm-del").onclick = async () => {
+    if (teams().length <= 1){ await saveTeam(t => { Object.assign(t, emptyTeam(t.name)); }); return; }
+    await mutate(() => { U.teams = teams().slice(); U.teams.splice(teamIdx, 1); teamIdx = Math.max(0, teamIdx - 1); U.teams = sanitizeTeams(U.teams); });
+  };
+  // メモリー選択
+  $("tm-memsel").onchange = async e => { const id = vNum(e.target.value); await saveTeam(t => { t.mem = isNo(id) ? id : null; }); };
+  // たたき台
+  $("sg-preset").innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join("");
+  $("sg-attr").innerHTML = `<option value="">指定なし</option>` + ATTRS.map(a => `<option>${esc(a)}</option>`).join("");
+  $("sg-go").onclick = async () => {
+    const btn = $("sg-go"); btn.disabled = true; btn.textContent = "考えています…";
+    await new Promise(r => setTimeout(r, 30));
+    try {
+      const t = suggestTeam($("sg-preset").value, {owned: $("sg-owned").checked, attr: $("sg-attr").value});
+      if (!t.m.some(Boolean)){ toast("条件に合うキャラが見つかりませんでした"); return; }
+      await mutate(() => { U.teams = teams().slice(); U.teams.push({name: "たたき台：" + PRESETS[$("sg-preset").value].label + ($("sg-attr").value ? "・" + $("sg-attr").value : ""), m: t.m, mem: t.mem}); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); });
+      toast("たたき台を新しい編成として作りました");
+    } finally { btn.disabled = false; btn.textContent = "たたき台を作る"; }
+  };
+}
+function renderTeamMemSelect(){
+  const t = curTeam(); const own = MEM.filter(m => U.mown?.[m.id]); const rest = MEM.filter(m => !U.mown?.[m.id]);
+  const opt = m => `<option value="${m.id}"${t.mem === m.id ? " selected" : ""}>${esc(m.r)} ${esc(m.nm)}</option>`;
+  $("tm-memsel").innerHTML = `<option value="">メモリーなし</option>` + (own.length ? `<optgroup label="所持">${own.map(opt).join("")}</optgroup>` : "") + `<optgroup label="未所持">${rest.map(opt).join("")}</optgroup>`;
+}
+
+initTeamUI();
 /* ---------- フラワーメモリー ---------- */
 let MEM = [];
 const MF = {q:"", r:new Set(), own:"", src:"", lv:"max", sort:"id", dir:1};
@@ -1125,7 +1565,7 @@ function openSheet(n){
       <div id="cropper" hidden></div>
       ${detailHTML(c)}
       ${canWrite ? `<form id="edform" autocomplete="off"><div class="formgrid">${fieldsHTML("ed", c)}</div>
-        <div class="actions"><button class="primary" type="submit">変更を保存</button><button class="danger" type="button" id="ed-del">削除</button><span class="err" id="ed-err"></span></div>
+        <div class="actions"><button class="primary" type="submit">変更を保存</button><button class="ghost" type="button" id="ed-team">編成に入れる</button><button class="danger" type="button" id="ed-del">削除</button><span class="err" id="ed-err"></span></div>
         <div id="ed-confirm"></div></form>` : `<p class="note">閲覧のみです。</p>`}
     </div>`;
   s.hidden = false; $("scrim").hidden = false;
@@ -1469,6 +1909,7 @@ $("zkover").onchange = () => renderZukan();
   dz.ondrop = e => { e.preventDefault(); dz.classList.remove("on"); bulkIcons(e.dataTransfer.files); };
 })();
 
+document.addEventListener("click", e => { if (e.target && e.target.id === "ed-team" && openNo != null){ addToTeam(openNo); } });
 function closeSheet(){ $("sheet").hidden = true; $("scrim").hidden = true; openNo = null; }
 $("scrim").onclick = closeSheet;
 document.addEventListener("keydown", e => { if (e.key==="Escape" && openNo!==null) closeSheet(); });
@@ -1523,6 +1964,7 @@ function showPanels(hasData){
   $("view-list").hidden = !(hasData && view==="list");
   $("view-stats").hidden = !(hasData && view==="stats");
   $("view-mem").hidden = !(hasData && view==="mem");
+  $("view-team").hidden = !(hasData && view==="team");
   $("view-add").hidden = !(view==="add" && db && canWrite);
   $("status").hidden = hasData || (view==="add" && db && canWrite);
 }
@@ -1571,14 +2013,14 @@ $("bk-export").onclick = async () => {
   // 自分の記録だけを書き出す（マスターの値は含めないので、後でマスターが直っても古い値で上書きしない）
   const data = {app:"galanthus", v:2, rev:DATA_REV, exportedAt:new Date().toISOString(),
     own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number), del: Object.keys(U.del).map(Number),
-    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number),
+    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [],
     ov: U.ov, extra: U.extra, icons};
   downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
   $("bk-msg").textContent = `書き出しました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(icons).length}枚）。`;
 };
 function parseBackup(data){
   if (!data || typeof data !== "object" || data.app !== "galanthus") throw new Error("not galanthus");
-  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax)};
+  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: sanitizeTeams(data.teams)};
   if (data.ov || data.extra){ const x = sanitizeU(data); nu.ov = x.ov; nu.extra = x.extra; }
   else if (Array.isArray(data.chars)){
     // 古い形式（全キャラ入り）：マスターで空欄の項目だけ補い、マスターの値は上書きしない
@@ -1630,6 +2072,7 @@ $("bk-file").onchange = async e => {
 const REMOTE = "https://raw.githubusercontent.com/shroudf-wq/galanthus-chara-db/main/data/";
 let DATA_REV = 0, DATA_FROM = "", BUNDLED = null;
 function applyMaster(m, from){
+  if (typeof effCache !== "undefined") effCache.clear();
   if (m.mem && m.mem.length) { MEM = m.mem; buildMemFilters(); }
   MASTER = new Map(m.cj.chars.map(c=>[c.n, c]));
   DET = m.dj || {};
