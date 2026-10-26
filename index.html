@@ -1,0 +1,1248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Galanthus キャラDB</title>
+<meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
+<meta name="theme-color" content="#2f6b4a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121815" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 上に集計の帯、その下にツールバーと横スクロール可能な一覧表。行をクリックで右から詳細シート。 */
+:root{
+  --bg:#f6f8f5; --surface:#ffffff; --sunk:#edf1ec; --line:#d9e1d8; --line-strong:#b9c6b8;
+  --fg:#1d2a22; --muted:#5f6f64; --faint:#8a988e;
+  --accent:#2f6b4a; --accent-soft:#dcebe1; --accent-fg:#ffffff;
+  --danger:#b3412f; --danger-soft:#f6e1dc;
+  --g-S:#1f6b46; --g-A:#3e8a52; --g-B:#7aa64a; --g-C:#b5b03c; --g-D:#c99636; --g-E:#c97a3a; --g-F:#b8624a; --g-G:#9a8f8a;
+  --at-slash:#c2453a; --at-blunt:#c98a1c; --at-pierce:#2f6fb3; --at-magic:#7b4fb0; --at-dream:#c25295;
+  --f-display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121815; --surface:#19211c; --sunk:#0f1411; --line:#2a352e; --line-strong:#3c4a41;
+  --fg:#e3ebe5; --muted:#9db0a3; --faint:#71837a;
+  --accent:#7cc79a; --accent-soft:#213a2b; --accent-fg:#0d1a12;
+  --danger:#ef8a76; --danger-soft:#3a201b;
+  --g-S:#5fc48c; --g-A:#7cc06a; --g-B:#a6c25c; --g-C:#cfc65a; --g-D:#e0ad55; --g-E:#e39461; --g-F:#d98571; --g-G:#8d8682;
+  --at-slash:#f07a6e; --at-blunt:#e8b34f; --at-pierce:#6fa8e8; --at-magic:#ad8be0; --at-dream:#e88cc2;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121815; --surface:#19211c; --sunk:#0f1411; --line:#2a352e; --line-strong:#3c4a41;
+  --fg:#e3ebe5; --muted:#9db0a3; --faint:#71837a;
+  --accent:#7cc79a; --accent-soft:#213a2b; --accent-fg:#0d1a12;
+  --danger:#ef8a76; --danger-soft:#3a201b;
+  --g-S:#5fc48c; --g-A:#7cc06a; --g-B:#a6c25c; --g-C:#cfc65a; --g-D:#e0ad55; --g-E:#e39461; --g-F:#d98571; --g-G:#8d8682;
+  --at-slash:#f07a6e; --at-blunt:#e8b34f; --at-pierce:#6fa8e8; --at-magic:#ad8be0; --at-dream:#e88cc2;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
+body{margin:0;font-size:14px;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55}
+.wrap{max-width:1400px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1.1;margin:0;letter-spacing:.02em;text-wrap:balance}
+.brand h1 small{font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--muted);margin-left:10px;letter-spacing:.08em}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+.summary{display:flex;flex-wrap:wrap;gap:6px 18px}
+.summary div{display:flex;flex-direction:column;align-items:flex-end;min-width:64px}
+.summary b{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.summary span{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.summary .miss b{color:var(--danger)}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+nav.tabs button{background:none;border:0;padding:8px 14px 9px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
+nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.tabs .spacer{flex:1}
+.ghost{background:none;border:1px solid var(--line-strong);border-radius:var(--r);padding:5px 12px;cursor:pointer;font-size:13px}
+.ghost:hover{background:var(--sunk)}
+.primary{background:var(--accent);color:var(--accent-fg);border:0;border-radius:var(--r);padding:7px 16px;cursor:pointer;font-weight:700}
+.primary:disabled{opacity:.5;cursor:default}
+.danger{background:var(--danger-soft);color:var(--danger);border:1px solid transparent;border-radius:var(--r);padding:6px 12px;cursor:pointer;font-weight:500}
+
+/* toolbar */
+.toolbar{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.trow{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.search{flex:1 1 220px;min-width:0;display:flex}
+.search input{width:100%;padding:7px 10px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg)}
+.group{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.group > .lbl{font-size:11px;color:var(--muted);letter-spacing:.08em;margin-right:2px}
+.chip{border:1px solid var(--line-strong);background:var(--bg);border-radius:999px;padding:2px 10px;font-size:12.5px;cursor:pointer;line-height:1.6}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.sel{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.sel select{padding:4px 6px;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);color:var(--fg);font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--r);overflow:hidden}
+.seg button{border:0;background:var(--bg);padding:3px 10px;font-size:12.5px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.count{font-size:12.5px;color:var(--muted)}
+.count b{color:var(--fg);font-variant-numeric:tabular-nums}
+
+/* table */
+.tablebox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto;max-height:calc(100vh - 120px);min-width:0}
+table.db{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+table.db th{position:sticky;top:0;z-index:2;background:var(--sunk);text-align:left;font-weight:500;font-size:11.5px;color:var(--muted);letter-spacing:.06em;padding:7px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap;cursor:pointer;user-select:none}
+table.db th.r,table.db td.r{text-align:right}
+table.db th[aria-sort]::after{content:"";display:inline-block;margin-left:4px;border:4px solid transparent;vertical-align:middle}
+table.db th[aria-sort="ascending"]::after{border-bottom-color:currentColor;margin-top:-4px}
+table.db th[aria-sort="descending"]::after{border-top-color:currentColor;margin-top:4px}
+table.db td{padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.db tbody tr{cursor:pointer}
+table.db tbody tr:hover td{background:var(--sunk)}
+table.db tbody tr.missing td.name{color:var(--danger)}
+td.name{font-weight:500;position:sticky;left:0;background:var(--surface);z-index:1;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+th.name{left:0;z-index:3 !important}
+td.no{color:var(--faint);font-variant-numeric:tabular-nums}
+.stat{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;font-variant-numeric:tabular-nums}
+.g{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;font-size:11px;font-weight:700;color:#fff;flex:none}
+.g.S{background:var(--g-S)}.g.A{background:var(--g-A)}.g.B{background:var(--g-B)}.g.C{background:var(--g-C)}.g.D{background:var(--g-D)}.g.E{background:var(--g-E)}.g.F{background:var(--g-F)}.g.G{background:var(--g-G)}
+:root[data-theme="dark"] .g{color:#10160f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .g{color:#10160f}}
+.attr{display:inline-block;font-weight:700;width:1.4em;text-align:center}
+.attr.斬{color:var(--at-slash)}.attr.打{color:var(--at-blunt)}.attr.突{color:var(--at-pierce)}.attr.魔{color:var(--at-magic)}.attr.夢{color:var(--at-dream)}
+.rar{font-size:12px;letter-spacing:-.02em}
+.tag{font-size:11.5px;padding:1px 7px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.tag.lim{background:var(--danger-soft);color:var(--danger)}
+.own{border:1px solid var(--line-strong);border-radius:999px;background:var(--bg);font-size:12px;padding:0 9px;cursor:pointer;min-width:52px}
+.own.on{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:700}
+.own.off{color:var(--danger);border-color:var(--danger)}
+.mk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;vertical-align:middle}
+.more{display:flex;justify-content:center;padding:10px}
+
+.state{background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r);padding:28px 20px;text-align:center;color:var(--muted)}
+.state h2{font-family:var(--f-display);color:var(--fg);font-size:18px;margin:0 0 6px}
+
+/* stats */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;min-width:0}
+.panel h2{font-family:var(--f-display);font-size:17px;margin:0 0 10px}
+.panel h2 small{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:400;margin-left:6px}
+.scroll{overflow-x:auto}
+table.mini{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+table.mini th{font-weight:500;color:var(--muted);font-size:11.5px;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+table.mini th:first-child,table.mini td:first-child{text-align:left}
+table.mini td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.mini tr.total td{font-weight:700;border-top:1px solid var(--line-strong)}
+td.barcell{width:40%;min-width:120px}
+.bar{display:flex;height:10px;border-radius:3px;overflow:hidden;background:var(--sunk)}
+.bar i{display:block;height:100%}
+.bar .o{background:var(--accent)} .bar .l{background:var(--danger)} .bar .rp{background:var(--g-D)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+td.zero{color:var(--faint)}
+.heat{border-radius:3px}
+
+/* forms */
+.formgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 12px}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field label{font-size:11.5px;color:var(--muted);letter-spacing:.06em}
+.field input,.field select{padding:6px 8px;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);width:100%}
+.field.wide{grid-column:1/-1}
+.field .hint{font-size:11px;color:var(--faint)}
+.field .fixed{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);font-weight:700}
+.checks{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer;white-space:nowrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+textarea#bulk{width:100%;min-height:140px;padding:8px;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+.preview-stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.pstat{display:flex;align-items:center;gap:6px;background:var(--sunk);border-radius:6px;padding:4px 8px;font-size:12.5px}
+.pstat span{color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin:4px 0 10px}
+.err{color:var(--danger);font-size:12.5px}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,20,14,.35);z-index:20}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);z-index:21;border-left:1px solid var(--line);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.sheet-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:16px 18px 10px;border-bottom:1px solid var(--line)}
+.sheet-h h2{font-family:var(--f-display);font-size:21px;margin:0;line-height:1.25;word-break:break-all}
+.sheet-h .meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sheet-b{overflow:auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:16px}
+.x{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
+.statlist{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px 10px;align-items:center;font-variant-numeric:tabular-nums;font-size:13px}
+.statlist .k{color:var(--muted);font-size:12px}
+.statlist .v{text-align:right;font-weight:700}
+.statlist .p{color:var(--muted);font-size:12px;text-align:right}
+.pbar{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:0}
+.kv dt{color:var(--muted);font-size:12px}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.blk h3{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:0 0 6px}
+.skill{background:var(--sunk);border-radius:6px;padding:8px 10px;font-size:13px}
+.skill b{font-weight:700}
+.skill .rate{float:right;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+ul.ab{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px}
+ul.ab li{padding:3px 0;border-bottom:1px solid var(--line)}
+ul.ab li .who{color:var(--accent);font-weight:700;font-size:12px;margin-right:4px}
+mark{background:color-mix(in srgb, var(--g-C) 45%, transparent);color:inherit;border-radius:2px}
+details.st{margin-top:6px;font-size:13px}
+details.st summary{cursor:pointer;color:var(--muted);font-size:12px;padding:3px 0}
+.tp{font-size:12px}
+.ic{width:26px;height:26px;border-radius:6px;object-fit:cover;flex:none;background:var(--sunk);display:inline-grid;place-items:center;font-size:12px;font-weight:700;color:var(--muted);vertical-align:middle}
+.ic.lg{width:72px;height:72px;border-radius:12px;font-size:26px}
+.nmcell{display:inline-flex;align-items:center;gap:8px;max-width:100%}
+.nmcell span{overflow:hidden;text-overflow:ellipsis}
+td.name{padding-top:3px;padding-bottom:3px}
+.sh-top{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.icbtns{display:flex;flex-direction:column;gap:4px;align-items:center}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-size:11.5px;cursor:pointer}
+.linkbtn.del{color:var(--danger)}
+.cropbox{display:flex;flex-direction:column;gap:10px;align-items:center}
+.cropbox canvas{max-width:100%;border-radius:6px;touch-action:none;cursor:move;background:var(--sunk)}
+.cropbox input[type=range]{width:100%}
+.drop{display:block;cursor:pointer;border:1.5px dashed var(--line-strong);border-radius:8px;padding:18px;text-align:center;color:var(--muted);font-size:13px}
+.drop.on{border-color:var(--accent);background:var(--accent-soft)}
+.meter{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden;margin-top:4px}
+.meter i{display:block;height:100%;background:var(--accent)}
+ul.res{list-style:none;padding:0;margin:8px 0 0;font-size:12.5px;max-height:220px;overflow:auto}
+ul.res li{display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)}
+ul.res li.ng{color:var(--danger)}
+.zkshot{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.zkhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;margin-bottom:8px}
+.zkhead input[type=number]{width:80px;padding:3px 6px;border:1px solid var(--line-strong);border-radius:6px;background:var(--bg)}
+.zkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px}
+.zkcell{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;text-align:center;padding:4px;border-radius:6px;border:1px solid var(--line);cursor:pointer;min-width:0}
+.zkcell canvas{width:56px;height:56px;border-radius:6px}
+.zkcell .nm{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zkcell.ng{border-color:var(--danger);background:var(--danger-soft)}
+.zkcell.off{opacity:.35}
+.zkcell .st{font-size:10px;color:var(--muted)}
+.zkcell.ng .st{color:var(--danger)}
+.confirm{background:var(--danger-soft);border-radius:6px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:30;max-width:calc(100% - 32px)}
+
+@media (max-width:640px){
+  .brand h1{font-size:24px}
+  .summary b{font-size:18px}
+  .tablebox{max-height:none}
+}
+@media (prefers-reduced-motion: no-preference){
+  .sheet{animation:slide .18s ease-out}
+  @keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Galanthus<small>キャラデータベース</small></h1>
+      <p>評価は全キャラ中のパーセントランク（S ≥ 0.9 / A ≥ 0.8 / B ≥ 0.7 / C ≥ 0.6 / D ≥ 0.5 / E ≥ 0.4 / F ≥ 0.2 / G）。追加・編集すると自動で再計算されます。所持状況・アイコン・編集内容はこの端末にだけ保存されます。</p>
+    </div>
+    <div class="summary" id="summary">
+      <div><b id="s-total">—</b><span>実装数</span></div>
+      <div><b id="s-own">—</b><span>所持</span></div>
+      <div class="miss"><b id="s-miss">—</b><span>未所持</span></div>
+      <div><b id="s-made">—</b><span>作成済み</span></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-list" aria-selected="true" data-view="list">一覧</button>
+    <button role="tab" id="tab-stats" aria-selected="false" data-view="stats">集計</button>
+    <button role="tab" id="tab-add" aria-selected="false" data-view="add">登録・管理</button>
+    <span class="spacer"></span>
+        <button class="ghost" id="btn-csv">CSVで書き出し</button>
+  </nav>
+
+  <div id="status" class="state">
+    <h2>データを読み込んでいます</h2>
+    <div>キャラ一覧がここに表示されます。</div>
+  </div>
+
+  <!-- LIST -->
+  <section id="view-list" hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="toolbar">
+        <div class="trow">
+          <div class="search"><input id="q" type="search" placeholder="名前で検索（例：リコ、夏の思い出）" autocomplete="off"></div>
+          <div class="search"><input id="qa" type="search" placeholder="スキル・アビリティで検索（例：再行動、スキル発動率）" autocomplete="off"></div>
+          <div class="seg" role="group" aria-label="表示">
+            <button id="m-val" data-mode="val" aria-pressed="true">値</button>
+            <button id="m-rank" data-mode="rank" aria-pressed="false">順位</button>
+            <button id="m-pct" data-mode="pct" aria-pressed="false">割合</button>
+          </div>
+          <button class="ghost" id="reset">条件をクリア</button>
+        </div>
+        <div class="trow">
+          <div class="group" id="f-attr"><span class="lbl">属性</span></div>
+          <div class="group" id="f-nat"><span class="lbl">国</span></div>
+          <div class="group" id="f-rar"><span class="lbl">★</span></div>
+          <div class="group" id="f-tp"><span class="lbl">タイプ</span></div>
+        </div>
+        <div class="trow">
+          <label class="sel">実装年度 <select id="f-year"></select></label>
+          <label class="sel">入手先 <select id="f-src"></select></label>
+          <label class="sel">好きな物 <select id="f-like"></select></label>
+          <label class="sel">所持 <select id="f-own"><option value="">すべて</option><option value="1">所持</option><option value="0">未所持</option></select></label>
+          <label class="sel">作成 <select id="f-made"><option value="">すべて</option><option value="1">作成済み</option><option value="0">未作成</option></select></label>
+          <label class="sel">評価S以上 <select id="f-grade"><option value="">指定なし</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="mv">移動力</option><option value="tot">総合力</option></select></label>
+          <span class="count" id="count"></span>
+        </div>
+      </div>
+      <div class="tablebox" id="tablebox">
+        <table class="db" id="tbl">
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="more" id="more" hidden><button class="ghost" id="btn-more">さらに表示</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="view-stats" hidden>
+    <div class="cards">
+      <div class="panel">
+        <h2>年度別<small>実装数と所持状況</small></h2>
+        <div class="scroll"><table class="mini" id="t-year"></table></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>所持</span><span><i style="background:var(--danger)"></i>未所持・期間限定</span><span><i style="background:var(--g-D)"></i>未所持・再入手可能</span></div>
+      </div>
+      <div class="panel">
+        <h2>未所持キャラ<small>入手先別</small></h2>
+        <div class="scroll"><table class="mini" id="t-miss"></table></div>
+        <p class="note">一覧タブの「所持：未所持」で個別に確認できます。</p>
+      </div>
+      <div class="panel">
+        <h2>属性 × 国<small>実装数</small></h2>
+        <div class="scroll"><table class="mini" id="t-matrix"></table></div>
+      </div>
+      <div class="panel">
+        <h2>好きな物<small>属性別</small></h2>
+        <div class="scroll"><table class="mini" id="t-like"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADD -->
+  <section id="view-add" hidden>
+    <div class="cards">
+      <div class="panel" id="backup">
+        <h2>バックアップ</h2>
+        <p class="note">所持状況・作成済み・アイコン・自分で追加や編集した内容は、このブラウザの中にだけ保存されています。機種変更や別の端末で使うときは、ここで書き出したファイルを読み込んでください。ブラウザのデータを消すと失われるので、ときどき書き出しておくと安心です。</p>
+        <div class="actions"><button class="primary" type="button" id="bk-export">バックアップを書き出す</button><label class="ghost" for="bk-file" style="display:inline-block">バックアップを読み込む<input type="file" id="bk-file" accept=".json,application/json" hidden></label></div>
+        <div id="bk-msg" class="note" style="margin-top:8px"></div>
+        <div class="note" id="dataver"></div>
+      </div>
+      <form class="panel" id="addform" autocomplete="off">
+        <h2>1体ずつ追加</h2>
+        <p class="note">No. は自動で次の番号になります。総合力は空欄ならHP＋攻撃力＋防御力で計算します。</p>
+        <div class="formgrid" id="addfields"></div>
+        <div class="preview-stats" id="addpreview"></div>
+        <div class="actions"><button class="primary" type="submit" id="addsubmit">追加する</button><span class="err" id="adderr"></span></div>
+      </form>
+      <div class="panel">
+        <h2>まとめて貼り付け</h2>
+        <p class="note">スプレッドシートから行をコピーしてそのまま貼り付けできます（タブ区切り）。列の順番：<br><b>属性　国　名前　★　HP　攻撃力　防御力　移動力　総合力　好きな物　入手先　実装年度　所持</b><br>先頭にNo.列があっても大丈夫です。総合力・実装年度・所持は省略可（所持は ◯ / ー）。</p>
+        <textarea id="bulk" placeholder="斬	WR	ツバキ	★5	19788	7900	3200	675	30888	本	ガチャ	2015	◯"></textarea>
+        <div class="actions"><button class="ghost" id="bulkparse" type="button">内容を確認</button><span class="err" id="bulkerr"></span></div>
+        <div id="bulkpreview"></div>
+      </div>
+      <div class="panel" id="icpanel" hidden>
+        <h2>図鑑のスクショから登録</h2>
+        <p class="note">ゲームの「図鑑」画面のスクショを選ぶと、並んでいるアイコンを切り出します。属性マークの色の並びから、どのキャラかを自動で判定します（図鑑に出てこない期間限定キャラは飛ばして合わせます）。判定がずれていたら、アイコンの下のNo.を直してください。複数枚まとめて選べます。</p>
+        <label class="drop" id="zkdrop" for="zkfiles">図鑑のスクショをドロップ、またはクリックして選択<input type="file" id="zkfiles" accept="image/*" multiple hidden></label>
+        <div class="checks" style="margin-top:8px;font-size:12.5px"><label><input type="checkbox" class="mk" id="zkover"> 登録済みのアイコンも上書きする</label></div>
+        <div id="zkresult"></div>
+        <h2 style="margin-top:22px">画像ファイルから登録</h2>
+        <p class="note">ファイル名を<b>キャラ名</b>か<b>No.</b>にした画像を選ぶと、中央を正方形に切り抜いて128px（WebP）に縮小し、該当キャラに登録します。例：<b>サルビア.png</b>、<b>1334.jpg</b>。位置を調整したいときは、キャラの詳細画面から1枚ずつ設定してください。</p>
+        <label class="drop" id="icdrop" for="icfiles">ここに画像をドロップ、またはクリックして選択<input type="file" id="icfiles" accept="image/*" multiple hidden></label>
+        <div id="icresult"></div>
+        <div class="note" id="icusage" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="sh-name"></aside>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const ATTRS = ["斬","打","突","魔","夢"];
+const NATS_BASE = ["WR","LW","BV","BH","BO","LR","ZA","Ex","SG"];
+const RARS = ["★6","☆6","★5","☆5","★4","★3","★2"];
+const RAR_KEY = {"★6":6,"☆6":6.5,"★5":5,"☆5":5.5,"★4":4,"★3":3,"★2":2};
+const SRCS_BASE = ["ガチャ","イベント","期間限定","虹メダル","★4以下","その他"];
+const LIKES_BASE = ["本","ぬいぐるみ","ケーキ","宝石"];
+const STATS = [["hp","HP"],["at","攻撃力"],["df","防御力"],["mv","移動力"],["tot","総合力"]];
+const GRADES = [[0.9,"S"],[0.8,"A"],[0.7,"B"],[0.6,"C"],[0.5,"D"],[0.4,"E"],[0.2,"F"],[0,"G"]];
+const BAND = 200, DBAND = 100;
+const TYPES = ["攻撃","支援","守護","妨害","回復","特殊"];
+const STAGE_RANK = s => /昇華.*開花/.test(s) ? 6 : /^(レアリティ)?昇華$/.test(s) ? 5 : /覚醒/.test(s) ? 4.5 : /開花/.test(s) ? 4 : /昇華/.test(s) ? 3 : /進化後|^進化$/.test(s) ? 2 : /進化前/.test(s) ? 1 : 0;
+let DET = {};              // No. -> スキル・アビリティなど
+function detOf(c){ return DET[String(c.n)] || null; }
+function stagesOf(det){
+  if (!det || !det.ab) return [];
+  return Object.entries(det.ab).filter(([,l]) => l && l.length && !l.every(x => /^(効果\d|なし)$/.test(x))).sort((a,b)=>STAGE_RANK(b[0])-STAGE_RANK(a[0]));
+}
+function searchText(c){
+  if (c._st !== undefined) return c._st;
+  const det = detOf(c); if (!det) return c._st = "";
+  const top = stagesOf(det)[0];
+  return c._st = [...(det.sk||[]).map(s=>s.n+" "+s.d), ...(top?top[1]:[]), det.eq||""].join("\n").toLowerCase();
+}
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+let db = null, canWrite = true;
+const bands = {};          // bandId -> {chars:{no:obj}}
+let chars = [];            // merged list
+let calc = {};             // stat -> sorted ascending values
+let view = "list", mode = "val", limit = 400;
+let sortKey = "n", sortDir = 1;
+const F = { q:"", qa:"", attr:new Set(), nat:new Set(), rar:new Set(), tp:new Set(), year:"", src:"", like:"", own:"", made:"", grade:"" };
+
+/* ---------- storage of UI prefs (per viewer, optional) ---------- */
+function loadPrefs(){ try{ const p = JSON.parse(localStorage.getItem("galanthus-ui")||"{}"); if(p.mode) mode=p.mode; if(p.sortKey){sortKey=p.sortKey; sortDir=p.sortDir||1;} }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem("galanthus-ui", JSON.stringify({mode,sortKey,sortDir})); }catch(e){} }
+
+/* ---------- ranking math (Googleスプレッドシートの PERCENTRANK(…,4) / RANK と同じ) ---------- */
+function lowerBound(a,x){ let lo=0,hi=a.length; while(lo<hi){const m=(lo+hi)>>1; if(a[m]<x) lo=m+1; else hi=m;} return lo; }
+function upperBound(a,x){ let lo=0,hi=a.length; while(lo<hi){const m=(lo+hi)>>1; if(a[m]<=x) lo=m+1; else hi=m;} return lo; }
+function recompute(){
+  calc = {};
+  for (const [k] of STATS) calc[k] = chars.map(c => c[k]).filter(v => typeof v === "number" && isFinite(v)).sort((a,b)=>a-b);
+}
+function measure(k, v, arr = calc[k]){
+  if (!arr || !arr.length || typeof v !== "number") return {pct:0,rank:0,grade:"G"};
+  const n = arr.length, lo = lowerBound(arr, v), hi = upperBound(arr, v);
+  let pct;
+  if (n === 1) pct = 1;
+  else if (hi > lo) pct = lo/(n-1);
+  else { // not in set: interpolate like PERCENTRANK
+    if (lo === 0) pct = 0; else if (lo >= n) pct = 1;
+    else { const a=arr[lo-1], b=arr[lo]; pct = ((lo-1) + (v-a)/(b-a))/(n-1); }
+  }
+  pct = Math.round(pct*10000)/10000;
+  const rank = 1 + (n - hi);
+  let grade = "G"; for (const [t,g] of GRADES){ if (pct >= t - 1e-12){ grade = g; break; } }
+  return {pct, rank, grade};
+}
+function mOf(c, k){ c._m = c._m || {}; return c._m[k] || (c._m[k] = measure(k, c[k])); }
+
+/* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
+let MASTER = new Map();
+let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
+const iconURL = {};
+const USER_FIELDS = ["own","made","ic"];
+const idb = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open("galanthus", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("kv"); r.result.createObjectStore("icons"); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (store, mode, fn) => { const d = await open(); return new Promise((res, rej) => {
+    const t = d.transaction(store, mode), st = t.objectStore(store); const out = fn(st);
+    t.oncomplete = () => res(out && out.result !== undefined ? out.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
+  return {
+    get: (store, key) => tx(store, "readonly", st => st.get(key)),
+    put: (store, key, val) => tx(store, "readwrite", st => st.put(val, key)),
+    del: (store, key) => tx(store, "readwrite", st => st.delete(key)),
+    all: async store => { const d = await open(); return new Promise((res, rej) => {
+      const t = d.transaction(store, "readonly"), st = t.objectStore(store), out = {};
+      const cur = st.openCursor(); cur.onsuccess = () => { const c = cur.result; if (c){ out[c.key] = c.value; c.continue(); } else res(out); }; cur.onerror = () => rej(cur.error); }); },
+    clear: store => tx(store, "readwrite", st => st.clear()),
+  };
+})();
+let persistAsked = false;
+async function saveUser(){
+  await idb.put("kv", "user", U);
+  if (!persistAsked && navigator.storage?.persist){ persistAsked = true; navigator.storage.persist().catch(()=>{}); }
+}
+function rebuild(){
+  const list = [];
+  for (const [n, m] of MASTER){ if (U.del[n]) continue; list.push({...m, ...(U.ov[n]||{})}); }
+  for (const [n, e] of Object.entries(U.extra)) if (!MASTER.has(Number(n))) list.push({...e});
+  for (const c of list){ c.own = !!U.own[c.n]; c.made = !!U.made[c.n]; c.ic = iconURL[c.n] ? "1" : ""; }
+  list.sort((a,b)=>a.n-b.n);
+  chars = list; recompute();
+  buildFilters(); renderSummary(); render();
+}
+function stripUser(c){ const o = clean(c); for (const k of USER_FIELDS) delete o[k]; return o; }
+function applyRecord(rec){
+  const n = rec.n, m = MASTER.get(n);
+  if (m){
+    const diff = {};
+    for (const [k,v] of Object.entries(rec)) if (k !== "n" && JSON.stringify(m[k] ?? "") !== JSON.stringify(v ?? "")) diff[k] = v;
+    if (Object.keys(diff).length) U.ov[n] = diff; else delete U.ov[n];
+    delete U.del[n];
+  } else U.extra[n] = rec;
+}
+async function commit(){ await saveUser(); onData(); }
+async function writeChars(list){
+  for (const c of list){
+    applyRecord(stripUser(c));
+    if (c.own) U.own[c.n] = 1; else delete U.own[c.n];
+    if (c.made) U.made[c.n] = 1; else delete U.made[c.n];
+  }
+  await commit();
+}
+async function patchChar(c, patch){
+  const rest = {};
+  for (const [k,v] of Object.entries(patch)){
+    if (k === "own" || k === "made"){ if (v) U[k][c.n] = 1; else delete U[k][c.n]; }
+    else if (k !== "ic") rest[k] = v;
+  }
+  if (Object.keys(rest).length) applyRecord({...stripUser(c), ...rest});
+  await commit();
+}
+async function deleteChar(c){
+  if (MASTER.has(c.n)) U.del[c.n] = 1; else delete U.extra[c.n];
+  delete U.own[c.n]; delete U.made[c.n]; delete U.ov[c.n];
+  await removeIcon(c.n);
+  await commit();
+}
+function clean(c){
+  const o = {n:c.n,a:c.a,k:c.k,nm:c.nm,r:c.r,hp:c.hp,at:c.at,df:c.df,mv:c.mv,tot:c.tot,y:c.y,own:!!c.own,src:c.src||"",like:c.like||"",made:!!c.made};
+  for (const k of ["tp","sp","srcD"]) if (typeof c[k] === "string") o[k] = c[k];
+  return o;
+}
+function writeError(e){
+  toast("この端末に保存できませんでした。ブラウザの空き容量やプライベートモードを確認してください");
+}
+
+/* ---------- filters ---------- */
+function uniq(base, key){
+  const s = new Set(base); for (const c of chars) if (c[key]) s.add(c[key]);
+  return [...s].filter(v => chars.some(c => c[key] === v));
+}
+function chipGroup(el, values, set){
+  el.querySelectorAll(".chip").forEach(n=>n.remove());
+  for (const v of values){
+    const b = document.createElement("button");
+    b.className = "chip"; b.type="button"; b.textContent = v; b.setAttribute("aria-pressed", set.has(v));
+    b.onclick = () => { set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); limit=400; render(); };
+    el.appendChild(b);
+  }
+}
+function fillSelect(el, values, cur, allLabel="すべて"){
+  el.innerHTML = `<option value="">${allLabel}</option>` + values.map(v=>`<option${String(v)===String(cur)?" selected":""}>${esc(v)}</option>`).join("");
+}
+function buildFilters(){
+  chipGroup($("f-attr"), uniq(ATTRS,"a"), F.attr);
+  chipGroup($("f-nat"), uniq(NATS_BASE,"k"), F.nat);
+  chipGroup($("f-rar"), uniq(RARS,"r").sort((a,b)=>(RAR_KEY[b]||0)-(RAR_KEY[a]||0)), F.rar);
+  chipGroup($("f-tp"), uniq(TYPES,"tp"), F.tp);
+  $("f-tp").hidden = !chars.some(c=>c.tp);
+  const years = [...new Set(chars.map(c=>c.y).filter(Boolean))].sort((a,b)=>b-a);
+  fillSelect($("f-year"), years, F.year);
+  fillSelect($("f-src"), uniq(SRCS_BASE,"src"), F.src);
+  fillSelect($("f-like"), uniq(LIKES_BASE,"like"), F.like);
+}
+function matches(c){
+  if (F.q){ const q = F.q.toLowerCase(); if (!c.nm.toLowerCase().includes(q)) return false; }
+  if (F.attr.size && !F.attr.has(c.a)) return false;
+  if (F.nat.size && !F.nat.has(c.k)) return false;
+  if (F.rar.size && !F.rar.has(c.r)) return false;
+  if (F.tp.size && !F.tp.has(c.tp)) return false;
+  if (F.qa){ const t = searchText(c); if (!F.qa.split(/\s+/).every(w => t.includes(w))) return false; }
+  if (F.year && String(c.y) !== F.year) return false;
+  if (F.src && c.src !== F.src) return false;
+  if (F.like && c.like !== F.like) return false;
+  if (F.own && (c.own ? "1":"0") !== F.own) return false;
+  if (F.made && (c.made ? "1":"0") !== F.made) return false;
+  if (F.grade && mOf(c,F.grade).grade !== "S") return false;
+  return true;
+}
+
+/* ---------- list rendering ---------- */
+const COLS = [
+  {k:"n",l:"No.",cls:"r"},{k:"a",l:"属性"},{k:"k",l:"国"},{k:"nm",l:"名前",cls:"name"},{k:"r",l:"★"},{k:"tp",l:"タイプ"},
+  {k:"hp",l:"HP",cls:"r",stat:1},{k:"at",l:"攻撃力",cls:"r",stat:1},{k:"df",l:"防御力",cls:"r",stat:1},{k:"mv",l:"移動力",cls:"r",stat:1},{k:"tot",l:"総合力",cls:"r",stat:1},
+  {k:"y",l:"実装",cls:"r"},{k:"src",l:"入手先"},{k:"like",l:"好きな物"},{k:"own",l:"所持"},{k:"made",l:"作成"}
+];
+function renderHead(){
+  $("thead").innerHTML = COLS.map(c => `<th class="${c.cls||""}" data-k="${c.k}"${sortKey===c.k?` aria-sort="${sortDir>0?"ascending":"descending"}"`:""}>${c.l}</th>`).join("");
+}
+function sortVal(c,k){
+  if (k==="r") return RAR_KEY[c.r]||0;
+  if (k==="own"||k==="made") return c[k]?1:0;
+  return c[k];
+}
+function statCell(c,k){
+  const m = mOf(c,k);
+  const v = mode==="rank" ? m.rank : mode==="pct" ? (m.pct*100).toFixed(1)+"%" : c[k];
+  return `<span class="stat">${v}<span class="g ${m.grade}">${m.grade}</span></span>`;
+}
+function render(){
+  if (view !== "list") { if (view==="stats") renderStats(); return; }
+  renderHead();
+  let rows = chars.filter(matches);
+  const k = sortKey, d = sortDir;
+  rows.sort((a,b)=>{ const x=sortVal(a,k), y=sortVal(b,k); if (x===y) return a.n-b.n; if (typeof x==="string") return x.localeCompare(y,"ja")*d; return (x<y?-1:1)*d; });
+  $("count").innerHTML = `<b>${rows.length}</b> / ${chars.length} 体`;
+  const shown = rows.slice(0, limit);
+  $("tbody").innerHTML = shown.map(c => {
+    const lim = c.src === "期間限定";
+    return `<tr data-n="${c.n}" class="${c.own?"":"missing"}">
+      <td class="no r">${c.n}</td>
+      <td><span class="attr ${esc(c.a)}">${esc(c.a)}</span></td>
+      <td>${esc(c.k)}</td>
+      <td class="name" title="${esc(c.nm)}"><span class="nmcell">${iconHTML(c)}<span>${esc(c.nm)}</span></span></td>
+      <td class="rar">${esc(c.r)}</td>
+      <td class="tp">${esc(c.tp||"")}</td>
+      <td class="r">${statCell(c,"hp")}</td><td class="r">${statCell(c,"at")}</td><td class="r">${statCell(c,"df")}</td><td class="r">${statCell(c,"mv")}</td><td class="r">${statCell(c,"tot")}</td>
+      <td class="r num">${c.y||""}</td>
+      <td>${c.src?`<span class="tag${lim?" lim":""}">${esc(c.src)}</span>`:""}</td>
+      <td>${esc(c.like)}</td>
+      <td><button class="own ${c.own?"on":"off"}" data-act="own" ${canWrite?"":"disabled"} aria-label="所持を切り替え">${c.own?"所持":"未所持"}</button></td>
+      <td><input type="checkbox" class="mk" data-act="made" ${c.made?"checked":""} ${canWrite?"":"disabled"} aria-label="作成済み"></td>
+    </tr>`;
+  }).join("");
+  $("more").hidden = rows.length <= limit;
+  if (!rows.length) $("tbody").innerHTML = `<tr><td colspan="${COLS.length}" style="text-align:center;padding:24px;color:var(--muted);cursor:default">条件に合うキャラがいません。条件をゆるめてください。</td></tr>`;
+}
+function renderSummary(){
+  const own = chars.filter(c=>c.own).length;
+  $("s-total").textContent = chars.length;
+  $("s-own").textContent = own;
+  $("s-miss").textContent = chars.length - own;
+  $("s-made").textContent = chars.filter(c=>c.made).length;
+}
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const years = [...new Set(chars.map(c=>c.y).filter(Boolean))].sort((a,b)=>a-b);
+  const maxN = Math.max(1,...years.map(y=>chars.filter(c=>c.y===y).length));
+  let rows = "", T={n:0,o:0,l:0,rp:0};
+  for (const y of years){
+    const list = chars.filter(c=>c.y===y), o = list.filter(c=>c.own).length;
+    const miss = list.filter(c=>!c.own), l = miss.filter(c=>c.src==="期間限定").length, rp = miss.length - l;
+    T.n+=list.length; T.o+=o; T.l+=l; T.rp+=rp;
+    const w = v => (v/maxN*100).toFixed(2)+"%";
+    rows += `<tr><td>${y}</td><td>${list.length}</td><td>${o}</td><td class="${miss.length?"":"zero"}">${miss.length}</td><td class="${l?"":"zero"}">${l}</td><td class="${rp?"":"zero"}">${rp}</td>
+      <td class="barcell"><div class="bar"><i class="o" style="width:${w(o)}"></i><i class="l" style="width:${w(l)}"></i><i class="rp" style="width:${w(rp)}"></i></div></td></tr>`;
+  }
+  $("t-year").innerHTML = `<thead><tr><th>年度</th><th>実装</th><th>所持</th><th>未所持</th><th>うち期間限定</th><th>再入手可能</th><th></th></tr></thead><tbody>${rows}
+    <tr class="total"><td>合計</td><td>${T.n}</td><td>${T.o}</td><td>${T.l+T.rp}</td><td>${T.l}</td><td>${T.rp}</td><td></td></tr></tbody>`;
+
+  const miss = chars.filter(c=>!c.own), srcs = uniq(SRCS_BASE,"src");
+  $("t-miss").innerHTML = `<thead><tr><th>入手先</th><th>未所持</th><th>実装数</th><th>所持率</th></tr></thead><tbody>` +
+    srcs.map(s => { const all = chars.filter(c=>c.src===s).length, m = miss.filter(c=>c.src===s).length;
+      return `<tr><td>${esc(s)}</td><td class="${m?"":"zero"}">${m}</td><td>${all}</td><td>${all?((all-m)/all*100).toFixed(1):"—"}%</td></tr>`; }).join("") + `</tbody>`;
+
+  const attrs = uniq(ATTRS,"a"), nats = uniq(NATS_BASE,"k");
+  const cnt = (a,k) => chars.filter(c=>c.a===a && c.k===k).length;
+  let mx = 1; for (const a of attrs) for (const k of nats) mx = Math.max(mx, cnt(a,k));
+  $("t-matrix").innerHTML = `<thead><tr><th></th>${nats.map(k=>`<th>${esc(k)}</th>`).join("")}<th>計</th></tr></thead><tbody>` +
+    attrs.map(a => `<tr><td><span class="attr ${esc(a)}">${esc(a)}</span></td>${nats.map(k=>{const v=cnt(a,k); return `<td class="${v?"":"zero"}"><span class="heat" style="padding:1px 5px;background:color-mix(in srgb, var(--accent) ${Math.round(v/mx*35)}%, transparent)">${v}</span></td>`;}).join("")}<td><b>${chars.filter(c=>c.a===a).length}</b></td></tr>`).join("") +
+    `<tr class="total"><td>計</td>${nats.map(k=>`<td>${chars.filter(c=>c.k===k).length}</td>`).join("")}<td>${chars.length}</td></tr></tbody>`;
+
+  const likes = uniq(LIKES_BASE,"like");
+  $("t-like").innerHTML = `<thead><tr><th>好きな物</th>${attrs.map(a=>`<th><span class="attr ${esc(a)}">${esc(a)}</span></th>`).join("")}<th>計</th></tr></thead><tbody>` +
+    likes.map(l => `<tr><td>${esc(l)}</td>${attrs.map(a=>{const v=chars.filter(c=>c.like===l&&c.a===a).length; return `<td class="${v?"":"zero"}">${v}</td>`;}).join("")}<td><b>${chars.filter(c=>c.like===l).length}</b></td></tr>`).join("") + `</tbody>`;
+}
+
+/* ---------- forms ---------- */
+function fieldsHTML(prefix, c){
+  const opt = (arr, cur) => arr.map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
+  const nats = uniq(NATS_BASE,"k"), srcs = uniq(SRCS_BASE,"src"), likes = uniq(LIKES_BASE,"like");
+  const fixed = prefix === "ed"; // 既存キャラの属性と★はゲーム内で変わらないので固定表示
+  return `
+  <div class="field wide"><label for="${prefix}-nm">名前</label><input id="${prefix}-nm" required value="${esc(c.nm||"")}" placeholder="例：サカキ(夏の思い出)"></div>
+  ${fixed ? `<div class="field"><label>属性</label><div class="fixed"><span class="attr ${esc(c.a)}">${esc(c.a)}</span></div><input type="hidden" id="${prefix}-a" value="${esc(c.a)}"></div>`
+          : `<div class="field"><label for="${prefix}-a">属性</label><select id="${prefix}-a">${opt(ATTRS,c.a||"斬")}</select></div>`}
+  <div class="field"><label for="${prefix}-k">国</label><input id="${prefix}-k" list="dl-nat" value="${esc(c.k||"")}" required></div>
+  ${fixed ? `<div class="field"><label>★</label><div class="fixed">${esc(c.r)}</div><input type="hidden" id="${prefix}-r" value="${esc(c.r)}"></div>`
+          : `<div class="field"><label for="${prefix}-r">★</label><select id="${prefix}-r">${opt(RARS,c.r||"★6")}</select></div>`}
+  <div class="field"><label for="${prefix}-tp">タイプ</label><select id="${prefix}-tp"><option value="">未設定</option>${opt(TYPES,c.tp||"")}</select></div>
+  <div class="field"><label for="${prefix}-y">実装年度</label><input id="${prefix}-y" type="number" inputmode="numeric" value="${c.y||new Date().getFullYear()}"></div>
+  <div class="field"><label for="${prefix}-hp">HP</label><input id="${prefix}-hp" type="number" inputmode="numeric" required value="${c.hp??""}"></div>
+  <div class="field"><label for="${prefix}-at">攻撃力</label><input id="${prefix}-at" type="number" inputmode="numeric" required value="${c.at??""}"></div>
+  <div class="field"><label for="${prefix}-df">防御力</label><input id="${prefix}-df" type="number" inputmode="numeric" required value="${c.df??""}"></div>
+  <div class="field"><label for="${prefix}-mv">移動力</label><input id="${prefix}-mv" type="number" inputmode="numeric" required value="${c.mv??""}"></div>
+  <div class="field"><label for="${prefix}-tot">総合力</label><input id="${prefix}-tot" type="number" inputmode="numeric" value="${c.tot??""}" placeholder="自動"><span class="hint">空欄＝HP＋攻撃力＋防御力</span></div>
+  <div class="field"><label for="${prefix}-src">入手先</label><input id="${prefix}-src" list="dl-src" value="${esc(c.src||"")}"></div>
+  <div class="field"><label for="${prefix}-like">好きな物</label><input id="${prefix}-like" list="dl-like" value="${esc(c.like||"")}"></div>
+  <div class="field wide"><div class="checks">
+    <label><input type="checkbox" class="mk" id="${prefix}-own" ${c.own?"checked":""}> 所持</label>
+    <label><input type="checkbox" class="mk" id="${prefix}-made" ${c.made?"checked":""}> 作成済み</label>
+  </div></div>
+  <datalist id="dl-nat">${opt(nats)}</datalist><datalist id="dl-src">${opt(srcs)}</datalist><datalist id="dl-like">${opt(likes)}</datalist>`;
+}
+function readFields(prefix){
+  const g = id => $(prefix+"-"+id);
+  const num = id => { const v = g(id).value.trim(); return v === "" ? null : Number(v); };
+  const c = { nm:g("nm").value.trim(), a:g("a").value, k:g("k").value.trim(), r:g("r").value, y:num("y"),
+    hp:num("hp"), at:num("at"), df:num("df"), mv:num("mv"), tot:num("tot"),
+    src:g("src").value.trim(), like:g("like").value.trim(), own:g("own").checked, made:g("made").checked, tp:g("tp").value };
+  const errs = [];
+  if (!c.nm) errs.push("名前");
+  if (!c.k) errs.push("国");
+  for (const [k,l] of [["hp","HP"],["at","攻撃力"],["df","防御力"],["mv","移動力"]]) if (c[k]===null || !isFinite(c[k])) errs.push(l);
+  if (c.tot === null && c.hp!=null && c.at!=null && c.df!=null) c.tot = c.hp + c.at + c.df;
+  return {c, errs};
+}
+function previewHTML(c){
+  return STATS.map(([k,l]) => { if (c[k]==null || !isFinite(c[k])) return ""; const m = measureWith(k,c[k]);
+    return `<span class="pstat"><span>${l}</span><b class="num">${c[k]}</b><span class="g ${m.grade}">${m.grade}</span><span class="num">${m.rank}位</span></span>`; }).join("");
+}
+function measureWith(k,v){ // as if this new value were added to the set
+  const arr = calc[k].slice(); arr.splice(lowerBound(arr,v),0,v); return measure(k,v,arr);
+}
+function setupAdd(){
+  $("addfields").innerHTML = fieldsHTML("ad", {own:false});
+  const upd = () => { const {c} = readFields("ad"); $("addpreview").innerHTML = previewHTML(c); };
+  $("addform").oninput = upd; upd();
+}
+$("addform").addEventListener("submit", async e => {
+  e.preventDefault();
+  const {c, errs} = readFields("ad");
+  if (errs.length){ $("adderr").textContent = errs.join("・") + " を入力してください"; return; }
+  if (chars.some(x=>x.nm===c.nm)){ $("adderr").textContent = "同じ名前のキャラがすでにあります"; return; }
+  $("adderr").textContent = "";
+  c.n = nextNo();
+  $("addsubmit").disabled = true;
+  try { await writeChars([c]); toast(`No.${c.n} ${c.nm} を追加しました`); setupAdd(); }
+  catch(err){ writeError(err); }
+  finally { $("addsubmit").disabled = false; }
+});
+function nextNo(){ return chars.reduce((m,c)=>Math.max(m,c.n),0) + 1; }
+
+/* bulk paste */
+let bulkRows = [];
+$("bulkparse").onclick = () => {
+  const lines = $("bulk").value.split(/\r?\n/).map(l=>l.trimEnd()).filter(l=>l.trim());
+  const out = [], bad = [];
+  let n = nextNo();
+  const existing = new Set(chars.map(c=>c.nm));
+  lines.forEach((line, i) => {
+    let f = line.split("\t").map(s=>s.trim());
+    if (f.length < 4) f = line.split(/\s{2,}|,/).map(s=>s.trim());
+    if (/^\d+$/.test(f[0]) && ATTRS.includes(f[1])) f = f.slice(1);
+    const [a,k,nm,r,hp,at,df,mv,tot,like,src,y,own] = f;
+    const toN = s => { const v = Number(String(s??"").replace(/,/g,"")); return s!==undefined && s!=="" && isFinite(v) ? v : null; };
+    const c = { a, k, nm, r, hp:toN(hp), at:toN(at), df:toN(df), mv:toN(mv), tot:toN(tot), like:like||"", src:src||"", y:toN(y)||new Date().getFullYear(), own: own ? /^(◯|○|o|1|true|所持)$/i.test(own) : false, made:false };
+    if (c.tot===null && c.hp!=null && c.at!=null && c.df!=null) c.tot = c.hp+c.at+c.df;
+    const prob = [];
+    if (!ATTRS.includes(a)) prob.push("属性");
+    if (!nm) prob.push("名前");
+    if (!RAR_KEY[r]) prob.push("★");
+    for (const key of ["hp","at","df","mv"]) if (c[key]===null) prob.push({hp:"HP",at:"攻撃力",df:"防御力",mv:"移動力"}[key]);
+    if (nm && existing.has(nm)) prob.push("登録済みの名前");
+    if (prob.length) bad.push(`${i+1}行目：${prob.join("・")}`);
+    else { c.n = n++; existing.add(nm); out.push(c); }
+  });
+  bulkRows = out;
+  $("bulkerr").textContent = bad.length ? bad.slice(0,5).join(" ／ ") + (bad.length>5?` ほか${bad.length-5}件`:"") : "";
+  if (!out.length){ $("bulkpreview").innerHTML = lines.length ? "" : `<p class="note">貼り付ける行がありません。</p>`; return; }
+  $("bulkpreview").innerHTML = `<div class="scroll" style="margin-top:12px"><table class="mini"><thead><tr><th>No.</th><th>名前</th><th>属性</th><th>国</th><th>★</th><th>HP</th><th>攻撃</th><th>防御</th><th>移動</th><th>総合</th><th>年度</th><th>入手先</th><th>所持</th></tr></thead><tbody>` +
+    out.map(c=>`<tr><td>${c.n}</td><td>${esc(c.nm)}</td><td style="text-align:left"><span class="attr ${esc(c.a)}">${esc(c.a)}</span></td><td>${esc(c.k)}</td><td>${esc(c.r)}</td><td>${c.hp}</td><td>${c.at}</td><td>${c.df}</td><td>${c.mv}</td><td>${c.tot}</td><td>${c.y}</td><td>${esc(c.src)}</td><td>${c.own?"◯":"ー"}</td></tr>`).join("") +
+    `</tbody></table></div><div class="actions"><button class="primary" id="bulkgo" type="button">${out.length}体を追加する</button></div>`;
+  $("bulkgo").onclick = async () => {
+    $("bulkgo").disabled = true;
+    try { await writeChars(bulkRows); toast(`${bulkRows.length}体を追加しました`); $("bulk").value=""; $("bulkpreview").innerHTML=""; bulkRows=[]; }
+    catch(err){ writeError(err); $("bulkgo").disabled = false; }
+  };
+};
+
+/* ---------- detail sheet ---------- */
+let openNo = null;
+function openSheet(n){
+  const c = chars.find(x=>x.n===n); if (!c) return;
+  openNo = n;
+  const s = $("sheet");
+  s.innerHTML = `
+    <div class="sheet-h"><div class="sh-top">
+      <div class="icbtns">${iconHTML(c,"lg")}${assets && canWrite ? `<button class="linkbtn" id="ic-set" type="button">${c.ic?"変更":"アイコン設定"}</button>${c.ic?`<button class="linkbtn del" id="ic-del" type="button">削除</button>`:""}` : ""}</div>
+      <div style="min-width:0"><h2 id="sh-name">${esc(c.nm)}</h2>
+      <div class="meta"><span class="num">No.${c.n}</span><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span><span>${c.y||""}年</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}</div></div></div>
+      <button class="x" id="sh-close" aria-label="閉じる">×</button></div>
+    <div class="sheet-b">
+      <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${c[k]}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
+      <div id="cropper" hidden></div>
+      ${detailHTML(c)}
+      ${canWrite ? `<form id="edform" autocomplete="off"><div class="formgrid">${fieldsHTML("ed", c)}</div>
+        <div class="actions"><button class="primary" type="submit">変更を保存</button><button class="danger" type="button" id="ed-del">削除</button><span class="err" id="ed-err"></span></div>
+        <div id="ed-confirm"></div></form>` : `<p class="note">閲覧のみです。</p>`}
+    </div>`;
+  s.hidden = false; $("scrim").hidden = false;
+  $("sh-close").onclick = closeSheet;
+  if (!canWrite) return;
+  if ($("ic-set")) $("ic-set").onclick = () => startCrop(c);
+  if ($("ic-del")) $("ic-del").onclick = async () => {
+    refreshSheet = true;
+    try { await removeIcon(c.n); onData(); toast("アイコンを削除しました"); }
+    catch(err){ writeError(err); }
+  };
+  $("edform").onsubmit = async e => {
+    e.preventDefault();
+    const {c: nc, errs} = readFields("ed");
+    if (errs.length){ $("ed-err").textContent = errs.join("・") + " を入力してください"; return; }
+    nc.n = c.n;
+    try { await writeChars([nc]); toast("保存しました"); closeSheet(); } catch(err){ writeError(err); }
+  };
+  $("ed-del").onclick = () => {
+    $("ed-confirm").innerHTML = `<div class="confirm">「${esc(c.nm)}」を削除します。元に戻せません。<button class="danger" type="button" id="ed-del2">削除する</button><button class="ghost" type="button" id="ed-cancel">やめる</button></div>`;
+    $("ed-cancel").onclick = () => $("ed-confirm").innerHTML = "";
+    $("ed-del2").onclick = async () => { try { await deleteChar(c); toast("削除しました"); closeSheet(); } catch(err){ writeError(err); } };
+  };
+}
+function hl(s){
+  let h = esc(s);
+  if (F.qa) for (const w of F.qa.split(/\s+/).filter(Boolean)){ const ew = esc(w).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); h = h.replace(new RegExp(ew,"gi"), m=>`<mark>${m}</mark>`); }
+  return h;
+}
+function abLine(t){
+  const m = t.match(/^(\[[^\]]+\])(.*)$/);
+  return m ? `<li><span class="who">${esc(m[1])}</span>${hl(m[2])}</li>` : `<li>${hl(t)}</li>`;
+}
+function lv5(r){
+  const m = String(r||"").match(/([0-9?.]+\??%)\s*\(Lv5\)/);
+  return m ? `発動率 ${m[1]}（Lv5）` : (r || "");
+}
+function detailHTML(c){
+  const det = detOf(c);
+  const prof = [["タイプ",c.tp],["品種",c.sp],["花言葉",det?.fl],["入手",c.srcD || c.src]].filter(([,v])=>v);
+  let h = prof.length ? `<div class="blk"><dl class="kv">${prof.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>` : "";
+  if (!det) return h + `<p class="note">スキル・アビリティはまだ登録されていません。</p>`;
+  if (det.sk && det.sk.length) h += `<div class="blk"><h3>戦闘スキル</h3>${det.sk.map(s=>`<div class="skill" style="margin-bottom:6px"><span class="rate">${esc(lv5(s.r))}</span>${s.l?`<span class="tag">${esc(s.l)}</span> `:""}<b>${hl(s.n)}</b><div>${hl(s.d)}</div></div>`).join("")}</div>`;
+  const st = stagesOf(det);
+  if (st.length){
+    const [top, ...rest] = st;
+    h += `<div class="blk"><h3>アビリティ（${esc(top[0])}）</h3><ul class="ab">${top[1].map(abLine).join("")}</ul>` +
+      rest.map(([s,l])=>`<details class="st"><summary>${esc(s)}</summary><ul class="ab">${l.map(abLine).join("")}</ul></details>`).join("") + `</div>`;
+  }
+  if (det.eq) h += `<div class="blk"><h3>専用装備効果</h3><div style="font-size:13px">${hl(det.eq)}</div></div>`;
+  if (det.url) h += `<div><a href="${esc(det.url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent)">wikiのキャラページを開く</a></div>`;
+  return h;
+}
+/* ---------- icons ---------- */
+const assets = {}; let refreshSheet = false;
+function iconHTML(c, size){
+  const cls = "ic" + (size ? " " + size : "");
+  if (iconURL[c.n]) return `<img class="${cls}" src="${iconURL[c.n]}" alt="" loading="lazy">`;
+  return `<span class="${cls} attr ${esc(c.a)}" aria-hidden="true">${esc((c.nm||"").slice(0,1))}</span>`;
+}
+function loadImage(file){
+  return new Promise((res, rej) => { const url = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => res(im); im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("画像を読み込めませんでした")); }; im.src = url; });
+}
+function makeIcon(img, sx, sy, s){
+  const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  const g = cv.getContext("2d"); g.imageSmoothingQuality = "high";
+  g.drawImage(img, sx, sy, s, s, 0, 0, 128, 128);
+  return new Promise(res => cv.toBlob(b => {
+    if (b && b.type === "image/webp") res(b); else cv.toBlob(p => res(p), "image/png");
+  }, "image/webp", 0.85));
+}
+async function saveIcon(c, blob){
+  await idb.put("icons", c.n, blob);
+  if (iconURL[c.n]) URL.revokeObjectURL(iconURL[c.n]);
+  iconURL[c.n] = URL.createObjectURL(blob);
+  onData();
+  return {id: iconURL[c.n]};
+}
+async function removeIcon(n){
+  await idb.del("icons", n);
+  if (iconURL[n]){ URL.revokeObjectURL(iconURL[n]); delete iconURL[n]; }
+}
+function assetError(e){
+  if (e && e.name === "QuotaExceededError") return "端末の保存容量が足りません";
+  const code = e && e.code;
+  if (code === "quota_or_state") return "画像の保存容量がいっぱいです";
+  if (code === "too_large") return "画像が大きすぎます";
+  if (code === "unsupported_type") return "この形式の画像は使えません";
+  if (code === "rate_limited") return "続けて登録しすぎました。少し待ってからもう一度お試しください";
+  return "保存できませんでした";
+}
+function startCrop(c){
+  const box = $("cropper"); box.hidden = false;
+  box.innerHTML = `<div class="blk cropbox">
+    <h3 style="align-self:flex-start">アイコンの範囲を選ぶ</h3>
+    <label class="drop" id="cr-drop" for="cr-file" style="width:100%">スクショを選択、ドロップ、または貼り付け（Ctrl+V / ⌘V）<input type="file" id="cr-file" accept="image/*" hidden></label>
+    <canvas id="cr-cv" width="320" height="320" hidden></canvas>
+    <label class="sel" id="cr-zoomlbl" style="width:100%" hidden>範囲の大きさ <input type="range" id="cr-zoom" min="5" max="100" value="40"></label>
+    <div class="actions" style="margin:0"><button class="primary" type="button" id="cr-save" disabled>このアイコンで保存</button><button class="ghost" type="button" id="cr-cancel">やめる</button><span class="err" id="cr-err"></span></div>
+  </div>`;
+  let img = null, sel = null, scale = 1;
+  const cv = $("cr-cv"), g = cv.getContext("2d");
+  const draw = () => {
+    if (!img) return;
+    g.clearRect(0,0,cv.width,cv.height);
+    g.drawImage(img, 0, 0, cv.width, cv.height);
+    g.fillStyle = "rgba(0,0,0,.5)";
+    const x = sel.x*scale, y = sel.y*scale, s = sel.s*scale;
+    g.fillRect(0,0,cv.width,y); g.fillRect(0,y+s,cv.width,cv.height-y-s); g.fillRect(0,y,x,s); g.fillRect(x+s,y,cv.width-x-s,s);
+    g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(x+1,y+1,s-2,s-2);
+  };
+  const clamp = () => { sel.s = Math.min(sel.s, img.naturalWidth, img.naturalHeight); sel.x = Math.max(0, Math.min(img.naturalWidth - sel.s, sel.x)); sel.y = Math.max(0, Math.min(img.naturalHeight - sel.s, sel.y)); };
+  const useFile = async f => {
+    if (!f || !/^image\//.test(f.type)) { $("cr-err").textContent = "画像ファイルを選んでください"; return; }
+    try { img = await loadImage(f); } catch(e){ $("cr-err").textContent = e.message; return; }
+    $("cr-err").textContent = "";
+    const W = img.naturalWidth, H = img.naturalHeight, maxW = Math.min(420, box.clientWidth || 320);
+    scale = Math.min(maxW / W, 420 / H, 1);
+    cv.width = Math.round(W*scale); cv.height = Math.round(H*scale);
+    const m = Math.min(W,H);
+    sel = {s: Math.round(m*0.4), x:0, y:0}; sel.x = (W-sel.s)/2; sel.y = (H-sel.s)/2;
+    $("cr-zoom").value = 40;
+    cv.hidden = false; $("cr-zoomlbl").hidden = false; $("cr-save").disabled = false; $("cr-drop").hidden = true;
+    draw();
+  };
+  $("cr-file").onchange = e => useFile(e.target.files[0]);
+  const dz = $("cr-drop");
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add("on"); };
+  dz.ondragleave = () => dz.classList.remove("on");
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove("on"); useFile(e.dataTransfer.files[0]); };
+  const onPaste = e => { const it = [...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/")); if (it){ e.preventDefault(); useFile(it.getAsFile()); } };
+  document.addEventListener("paste", onPaste);
+  $("cr-zoom").oninput = e => { if (!img) return; const m = Math.min(img.naturalWidth,img.naturalHeight); const cx = sel.x+sel.s/2, cy = sel.y+sel.s/2; sel.s = Math.max(16, Math.round(m*e.target.value/100)); sel.x = cx-sel.s/2; sel.y = cy-sel.s/2; clamp(); draw(); };
+  let drag = null;
+  cv.onpointerdown = e => { if (!img) return; cv.setPointerCapture(e.pointerId); const r = cv.getBoundingClientRect(), k = cv.width/r.width;
+    const px = (e.clientX-r.left)*k/scale, py = (e.clientY-r.top)*k/scale;
+    if (px < sel.x || px > sel.x+sel.s || py < sel.y || py > sel.y+sel.s){ sel.x = px - sel.s/2; sel.y = py - sel.s/2; clamp(); draw(); }
+    drag = {px, py, x: sel.x, y: sel.y, k, r}; };
+  cv.onpointermove = e => { if (!drag) return; const px = (e.clientX-drag.r.left)*drag.k/scale, py = (e.clientY-drag.r.top)*drag.k/scale; sel.x = drag.x + px - drag.px; sel.y = drag.y + py - drag.py; clamp(); draw(); };
+  cv.onpointerup = cv.onpointercancel = () => { drag = null; };
+  const close = () => { document.removeEventListener("paste", onPaste); box.hidden = true; box.innerHTML = ""; };
+  $("cr-cancel").onclick = close;
+  $("cr-save").onclick = async () => {
+    $("cr-save").disabled = true; $("cr-err").textContent = "";
+    try { const blob = await makeIcon(img, sel.x, sel.y, sel.s); close(); refreshSheet = true; await saveIcon(c, blob); toast("アイコンを保存しました"); renderUsage(); }
+    catch(e){ refreshSheet = false; toast(assetError(e)); }
+  };
+}
+async function renderUsage(){
+  const n = Object.keys(iconURL).length;
+  let extra = "";
+  try { const e = await navigator.storage?.estimate?.(); if (e && e.usage != null) extra = `（この端末での使用量 約${(e.usage/1048576).toFixed(1)}MB）`; } catch(e){}
+  $("icusage").textContent = `登録済みのアイコン：${n}体${extra}`;
+}
+const normName = s => String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
+async function bulkIcons(files){
+  const out = $("icresult"); const list = [...files].filter(f=>/^image\//.test(f.type));
+  if (!list.length) return;
+  const byName = new Map(chars.map(c=>[normName(c.nm), c]));
+  const rows = [];
+  out.innerHTML = `<ul class="res" id="icres"></ul>`;
+  const ul = $("icres");
+  let ok = 0;
+  for (const f of list){
+    const stem = f.name.replace(/\.[^.]+$/,"");
+    const c = /^\d+$/.test(stem) ? chars.find(x=>x.n===Number(stem)) : byName.get(normName(stem));
+    const li = document.createElement("li"); ul.appendChild(li);
+    if (!c){ li.className = "ng"; li.textContent = `${f.name}：一致するキャラが見つかりません`; continue; }
+    li.textContent = `${f.name} → ${c.nm} …`;
+    try {
+      const img = await loadImage(f); const m = Math.min(img.naturalWidth, img.naturalHeight);
+      const blob = await makeIcon(img, (img.naturalWidth-m)/2, (img.naturalHeight-m)/2, m);
+      const r = await saveIcon(c, blob); ok++;
+      li.innerHTML = `${iconHTML(c)}<span>${esc(f.name)} → ${esc(c.nm)}</span>`;
+    } catch(e){ li.className = "ng"; li.textContent = `${f.name}：${assetError(e)}`; if (e && (e.code === "quota_or_state" || e.code === "rate_limited")) break; }
+  }
+  toast(`${ok}体のアイコンを登録しました`);
+  renderUsage();
+}
+$("icfiles").onchange = e => { bulkIcons(e.target.files); e.target.value = ""; };
+
+/* ---- 図鑑スクショ: 1136x640基準のレイアウト（7列・120px間隔・96pxのアイコン） ---- */
+const ZK = {W:1136, pitch:120, size:96, cols:7, top:110, bottom:568, badge:[14,13], inset:6};
+const HUES = [["斬",6],["打",210],["突",47],["魔",286]];
+function classify(r,g,b){
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), v=mx/255, s=mx?(mx-mn)/mx:0;
+  if (s < 0.4 || v < 0.6) return null;
+  let h; const d=mx-mn;
+  if (mx===r) h=60*(((g-b)/d)%6); else if (mx===g) h=60*((b-r)/d+2); else h=60*((r-g)/d+4);
+  if (h<0) h+=360;
+  for (const [a,t] of HUES){ const dd=Math.min(Math.abs(h-t),360-Math.abs(h-t)); if (dd<25) return a; }
+  return null;
+}
+function badgeAt(data, W, x, y){
+  const cnt={}; let tot=0;
+  for (let dy=-3; dy<=3; dy+=1) for (let dx=-3; dx<=3; dx+=1){
+    const i=((Math.round(y)+dy)*W + Math.round(x)+dx)*4; const a=classify(data[i],data[i+1],data[i+2]);
+    if (a){ cnt[a]=(cnt[a]||0)+1; tot++; }
+  }
+  const best=Object.entries(cnt).sort((p,q)=>q[1]-p[1])[0];
+  return best && best[1] >= 25 ? best[0] : null;
+}
+function detectGrid(img){
+  const W=img.naturalWidth, H=img.naturalHeight, k=W/ZK.W;
+  const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+  const g=cv.getContext("2d"); g.drawImage(img,0,0); const data=g.getImageData(0,0,W,H).data;
+  let best=null;
+  for (let x0=190; x0<=255; x0+=1){
+    for (let y0=ZK.top-ZK.pitch+20; y0<ZK.top+ZK.pitch; y0+=1){
+      let hit=0;
+      for (let r=0; r<4; r++){ const y=y0+r*ZK.pitch; if (y<ZK.top-4 || y+ZK.size*0.9>ZK.bottom) continue;
+        for (let c=0; c<ZK.cols; c+=3){ if (badgeAt(data,W,(x0+c*ZK.pitch+ZK.badge[0])*k,(y+ZK.badge[1])*k)) hit++; } }
+      if (!best || hit>best.hit) best={x0,y0,hit};
+    }
+  }
+  if (!best || best.hit < 4) return null;
+  // 微調整は不要な精度なので、そのまま全セルを読む
+  const cells=[];
+  for (let y=best.y0; y+ZK.size*0.9<=ZK.bottom; y+=ZK.pitch){
+    if (y < ZK.top-4) continue;
+    for (let c=0; c<ZK.cols; c++){
+      const x=best.x0+c*ZK.pitch;
+      cells.push({x:x*k, y:y*k, s:ZK.size*k, a:badgeAt(data,W,(x+ZK.badge[0])*k,(y+ZK.badge[1])*k)});
+    }
+  }
+  return {k, cells};
+}
+/* 図鑑には一部の期間限定キャラが出てこないので、属性の並びを「キャラ一覧の部分列」として当てはめる。
+   期間限定キャラを飛ばすのは安く、それ以外を飛ばすのは高くつける（図鑑側にだけある枠も少しのコストで許す）。 */
+function alignCells(attrs, forceStart){
+  const arr = chars.slice().sort((p,q)=>p.n-q.n), N = attrs.length, M = arr.length, INF = 1e9;
+  const skipChar = c => c.src === "期間限定" ? (c.own ? 1.5 : 1) : 8;
+  const SKIP_CELL = 6;
+  const startIdx = forceStart ? arr.findIndex(c=>c.n>=forceStart) : -1;
+  // dp[i][j]: 先頭i枠を処理し、次に見るキャラがj番目
+  const dp = Array.from({length:N+1}, () => new Float64Array(M+1).fill(INF));
+  const bk = Array.from({length:N+1}, () => new Int8Array(M+1));
+  if (forceStart){ if (startIdx < 0) return null; dp[0][startIdx] = 0; }
+  else for (let j=0;j<=M;j++) dp[0][j] = 0;
+  for (let i=0;i<=N;i++) for (let j=0;j<=M;j++){
+    const v = dp[i][j]; if (v >= INF) continue;
+    if (j < M && i > 0 && i < N){ const w = v + skipChar(arr[j]); if (w < dp[i][j+1]){ dp[i][j+1] = w; bk[i][j+1] = 1; } }
+    if (i < N && j < M){ const a = attrs[i], c = arr[j];
+      const m = !a ? 0.3 : a === c.a ? 0 : INF;
+      if (m < INF){ const w = v + m; if (w < dp[i+1][j+1]){ dp[i+1][j+1] = w; bk[i+1][j+1] = 2; } } }
+    if (i < N){ const w = v + SKIP_CELL; if (w < dp[i+1][j]){ dp[i+1][j] = w; bk[i+1][j] = 3; } }
+  }
+  let bj = 0; for (let j=1;j<=M;j++) if (dp[N][j] < dp[N][bj]) bj = j;
+  const map = new Array(N).fill(null); let i = N, j = bj, skipped = 0;
+  while (i > 0){ const t = bk[i][j];
+    if (t === 2){ map[i-1] = arr[j-1].n; i--; j--; }
+    else if (t === 1){ skipped++; j--; }
+    else if (t === 3){ i--; }
+    else break; }
+  return {map, cost: dp[N][bj], skipped};
+}
+const zkShots=[];
+async function addZukan(files){
+  for (const f of [...files].filter(f=>/^image\//.test(f.type))){
+    let img; try { img = await loadImage(f); } catch(e){ toast("画像を読み込めませんでした"); continue; }
+    const det = detectGrid(img);
+    if (!det){ toast(`${f.name}：図鑑のアイコン配置を読み取れませんでした`); continue; }
+    const attrs = det.cells.map(c=>c.a);
+    const al = alignCells(attrs);
+    zkShots.push({name:f.name, img, cells:det.cells, attrs, map:al.map, ov:{}, start:null, sure: al.map.every(x=>x!==null), off:new Set()});
+  }
+  renderZukan();
+}
+function cellNo(s,i){ return s.ov[i] !== undefined ? s.ov[i] : s.map[i]; }
+function renderZukan(){
+  const out=$("zkresult");
+  if (!zkShots.length){ out.innerHTML=""; return; }
+  const byNo=new Map(chars.map(c=>[c.n,c])); const over=$("zkover").checked;
+  let total=0;
+  out.innerHTML = zkShots.map((s,si)=>{
+    const first = s.map.find(x=>x!==null);
+    return `<div class="zkshot"><div class="zkhead"><b>${esc(s.name)}</b>
+    <label>左上のNo. <input type="number" min="1" data-si="${si}" class="zkstart" value="${s.start ?? first ?? ""}"></label>
+    ${s.sure?"":`<span class="err">一部のアイコンを判定できませんでした。赤い枠を確認してください</span>`}
+    <button class="linkbtn del" type="button" data-rm="${si}">このスクショを外す</button></div>
+    <div class="zkgrid">${s.cells.map((cell,i)=>{ const n=cellNo(s,i), c=n!=null?byNo.get(n):null; const ok=c && (!cell.a || cell.a===c.a); const skip=!c || s.off.has(i) || (!over && c.ic);
+      if (ok && !skip) total++;
+      const prev = i>0 ? cellNo(s,i-1) : null; const gap = (c && prev!=null && n-prev>1) ? `<span class="st" title="図鑑に表示されないキャラを飛ばしています">↑No.${prev+1}${n-prev>2?"〜"+(n-1):""}なし</span>` : "";
+      return `<div class="zkcell${ok?"":" ng"}${skip||!ok?" off":""}" data-si="${si}" data-i="${i}" title="クリックで登録する・しないを切り替え"><canvas width="56" height="56" data-si="${si}" data-i="${i}"></canvas>
+        <input type="number" class="zkno" data-si="${si}" data-i="${i}" value="${n ?? ""}" aria-label="No." style="width:64px;font-size:11px;padding:1px 4px;border:1px solid var(--line-strong);border-radius:4px;background:var(--bg)">
+        <span class="nm">${c?esc(c.nm):"該当なし"}</span><span class="st">${!c?"No.を入力":!ok?`属性が違う（${cell.a||"?"}）`:skip?(s.off.has(i)?"登録しない":"登録済み"):"登録する"}</span>${gap}</div>`; }).join("")}</div></div>`; }).join("") +
+    `<div class="actions"><button class="primary" type="button" id="zkgo"${total?"":" disabled"}>${total}体のアイコンを登録する</button><button class="ghost" type="button" id="zkclear">クリア</button><span class="note" id="zkprog"></span></div>`;
+  out.querySelectorAll("canvas[data-si]").forEach(cv=>{ const s=zkShots[cv.dataset.si], cell=s.cells[cv.dataset.i], ins=ZK.inset*(cell.s/ZK.size);
+    cv.getContext("2d").drawImage(s.img, cell.x+ins, cell.y+ins, cell.s-2*ins, cell.s-2*ins, 0,0,56,56); });
+  out.querySelectorAll(".zkstart").forEach(inp=>inp.onchange=()=>{ const s=zkShots[inp.dataset.si]; const v=Math.max(1,Number(inp.value)||1);
+    const al=alignCells(s.attrs, v); if (al){ s.map=al.map; s.ov={}; s.start=v; s.sure=al.map.every(x=>x!==null); } renderZukan(); });
+  out.querySelectorAll(".zkno").forEach(inp=>{ inp.onclick=e=>e.stopPropagation(); inp.onchange=()=>{ const s=zkShots[inp.dataset.si], i=Number(inp.dataset.i); const v=inp.value===""?null:Number(inp.value);
+    if (v==null){ s.ov[i]=null; renderZukan(); return; }
+    // 直した枠から後ろを、そのNo.を起点に当てはめ直す
+    const al=alignCells(s.attrs.slice(i), v);
+    if (al){ for (let k=i;k<s.cells.length;k++){ delete s.ov[k]; s.map[k]=al.map[k-i]; } s.map[i]=v; } else s.ov[i]=v;
+    renderZukan(); }; });
+  out.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ zkShots.splice(Number(b.dataset.rm),1); renderZukan(); });
+  out.querySelectorAll(".zkcell").forEach(el=>el.onclick=()=>{ const s=zkShots[el.dataset.si], i=Number(el.dataset.i); s.off.has(i)?s.off.delete(i):s.off.add(i); renderZukan(); });
+  $("zkclear").onclick=()=>{ zkShots.length=0; renderZukan(); };
+  $("zkgo").onclick=zukanGo;
+}
+async function zukanGo(){
+  const byNo=new Map(chars.map(c=>[c.n,c])); const over=$("zkover").checked; const jobs=[];
+  for (const s of zkShots) s.cells.forEach((cell,i)=>{ const n=cellNo(s,i), c=n!=null?byNo.get(n):null;
+    if (c && (!cell.a || cell.a===c.a) && !s.off.has(i) && (over || !c.ic) && !jobs.some(j=>j.c.n===c.n)) jobs.push({s,cell,c}); });
+  $("zkgo").disabled=true; let ok=0, fail="";
+  for (const j of jobs){
+    $("zkprog").textContent=`登録中… ${ok}/${jobs.length}`;
+    try { const ins=ZK.inset*(j.cell.s/ZK.size); const blob=await makeIcon(j.s.img, j.cell.x+ins, j.cell.y+ins, j.cell.s-2*ins); await saveIcon(j.c, blob); ok++; }
+    catch(e){ fail=assetError(e); if (e && (e.code==="quota_or_state"||e.code==="rate_limited")) break; }
+  }
+  toast(`${ok}体のアイコンを登録しました` + (fail?`（${fail}）`:""));
+  zkShots.length=0; renderZukan(); renderUsage();
+}
+$("zkfiles").onchange = e => { addZukan(e.target.files); e.target.value=""; };
+$("zkover").onchange = () => renderZukan();
+(() => { const dz=$("zkdrop");
+  dz.ondragover=e=>{ e.preventDefault(); dz.classList.add("on"); };
+  dz.ondragleave=()=>dz.classList.remove("on");
+  dz.ondrop=e=>{ e.preventDefault(); dz.classList.remove("on"); addZukan(e.dataTransfer.files); };
+})();
+(() => { const dz = $("icdrop");
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add("on"); };
+  dz.ondragleave = () => dz.classList.remove("on");
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove("on"); bulkIcons(e.dataTransfer.files); };
+})();
+
+function closeSheet(){ $("sheet").hidden = true; $("scrim").hidden = true; openNo = null; }
+$("scrim").onclick = closeSheet;
+document.addEventListener("keydown", e => { if (e.key==="Escape" && openNo!==null) closeSheet(); });
+
+/* ---------- events ---------- */
+$("tbody").addEventListener("click", async e => {
+  const tr = e.target.closest("tr[data-n]"); if (!tr) return;
+  const c = chars.find(x=>x.n===Number(tr.dataset.n)); if (!c) return;
+  const act = e.target.dataset.act;
+  if (act === "own" || act === "made"){
+    e.stopPropagation();
+    if (!canWrite) return;
+    const val = act==="own" ? !c.own : e.target.checked;
+    try { await patchChar(c, {[act]: val}); } catch(err){ writeError(err); if (act==="made") e.target.checked = !val; }
+    return;
+  }
+  openSheet(c.n);
+});
+$("thead").addEventListener("click", e => {
+  const th = e.target.closest("th[data-k]"); if (!th) return;
+  const k = th.dataset.k;
+  if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = (COLS.find(c=>c.k===k).stat || k==="r" || k==="y") ? -1 : 1; }
+  savePrefs(); render();
+});
+let qt; $("q").addEventListener("input", e => { clearTimeout(qt); qt = setTimeout(()=>{ F.q = e.target.value.trim(); limit=400; render(); }, 120); });
+let qat; $("qa").addEventListener("input", e => { clearTimeout(qat); qat = setTimeout(()=>{ F.qa = e.target.value.trim().toLowerCase(); limit=400; render(); }, 200); });
+for (const [id,key] of [["f-year","year"],["f-src","src"],["f-like","like"],["f-own","own"],["f-made","made"],["f-grade","grade"]])
+  $(id).addEventListener("change", e => { F[key] = e.target.value; limit=400; render(); });
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  mode = b.dataset.mode; document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x===b)); savePrefs(); render();
+});
+$("reset").onclick = () => {
+  F.q=""; $("q").value=""; F.qa=""; $("qa").value=""; F.attr.clear(); F.nat.clear(); F.rar.clear(); F.tp.clear();
+  for (const k of ["year","src","like","own","made","grade"]) F[k]="";
+  ["f-own","f-made","f-grade"].forEach(id=>$(id).value="");
+  limit=400; buildFilters(); render();
+};
+$("btn-more").onclick = () => { limit += 600; render(); };
+document.querySelectorAll("nav.tabs [role=tab]").forEach(b => b.onclick = () => setView(b.dataset.view));
+function setView(v){
+  view = v;
+  document.querySelectorAll("nav.tabs [role=tab]").forEach(b=>b.setAttribute("aria-selected", b.dataset.view===v));
+  if (!chars.length && v !== "add") { showPanels(false); return; }
+  showPanels(true);
+  if (v==="add") setupAdd();
+  render();
+}
+function showPanels(hasData){
+  $("view-list").hidden = !(hasData && view==="list");
+  $("view-stats").hidden = !(hasData && view==="stats");
+  $("view-add").hidden = !(view==="add" && db && canWrite);
+  $("status").hidden = hasData || (view==="add" && db && canWrite);
+}
+
+let tt; function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, 2600); }
+
+/* ---------- CSV ---------- */
+function downloadBlob(filename, blob){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+$("btn-csv").onclick = async () => {
+  const head = ["No.","属性","国家","名前","★","HP","HP割合","HPランク","HP評価","攻撃力","攻撃割合","攻撃ランク","攻撃評価","防御力","防御割合","防御ランク","防御評価","移動力","移動割合","移動ランク","移動評価","総合力","総合割合","総合ランク","総合評価","実装年度","所持","入手先","好きな物","作成済み","タイプ","品種","入手詳細"];
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const lines = [head.join(",")].concat(chars.map(c => [c.n,c.a,c.k,c.nm,c.r, ...STATS.flatMap(([k])=>{const m=mOf(c,k); return [c[k],m.pct,m.rank,m.grade];}), c.y, c.own?"◯":"ー", c.src, c.like, c.made?"作成済み":"", c.tp||"", c.sp||"", c.srcD||""].map(q).join(",")));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"});
+  downloadBlob(`galanthus_${new Date().toISOString().slice(0,10)}.csv`, blob);
+};
+
+/* ---------- boot ---------- */
+loadPrefs();
+document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x.dataset.mode===mode));
+const origRebuild = rebuild;
+function onData(){
+  origRebuild();
+  if (!chars.length){
+    $("status").innerHTML = `<h2>まだキャラが登録されていません</h2><div>「追加」タブから1体ずつ、またはスプレッドシートの行を貼り付けて登録できます。</div>`;
+  }
+  showPanels(chars.length > 0);
+  if (view==="add" && !$("addfields").children.length) setupAdd();
+  if (openNo !== null && !chars.some(c=>c.n===openNo)) closeSheet();
+  else if (openNo !== null && refreshSheet){ refreshSheet = false; openSheet(openNo); }
+}
+/* ---------- バックアップ ---------- */
+function blobToDataURL(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(b); }); }
+async function dataURLToBlob(u){ return (await fetch(u)).blob(); }
+$("bk-export").onclick = async () => {
+  const icons = {}; const all = await idb.all("icons");
+  for (const [n, b] of Object.entries(all)) icons[n] = await blobToDataURL(b);
+  const data = {app:"galanthus", v:1, exportedAt:new Date().toISOString(),
+    chars: chars.map(stripUser), own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number),
+    del: Object.keys(U.del).map(Number), icons};
+  downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
+  $("bk-msg").textContent = `書き出しました（${chars.length}体・アイコン${Object.keys(icons).length}枚）。`;
+};
+$("bk-file").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  let data; try { data = JSON.parse(await f.text()); } catch(err){ $("bk-msg").textContent = "読み込めませんでした。バックアップのファイルを選んでください。"; return; }
+  if (!data || data.app !== "galanthus" || !Array.isArray(data.chars)){ $("bk-msg").textContent = "このアプリのバックアップではないようです。"; return; }
+  $("bk-msg").textContent = "読み込み中…";
+  U = {own:{}, made:{}, ov:{}, extra:{}, del:{}};
+  for (const rec of data.chars) if (rec && rec.n) applyRecord(rec);
+  for (const n of data.own||[]) U.own[n] = 1;
+  for (const n of data.made||[]) U.made[n] = 1;
+  for (const n of data.del||[]) if (MASTER.has(n)) U.del[n] = 1;
+  await idb.clear("icons"); for (const k of Object.keys(iconURL)){ URL.revokeObjectURL(iconURL[k]); delete iconURL[k]; }
+  let ic = 0;
+  for (const [n, u] of Object.entries(data.icons||{})){ try { const b = await dataURLToBlob(u); await idb.put("icons", Number(n), b); iconURL[n] = URL.createObjectURL(b); ic++; } catch(err){} }
+  await commit(); renderUsage();
+  $("bk-msg").textContent = `読み込みました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${ic}枚）。`;
+};
+
+(async () => {
+  db = true;
+  try {
+    const [cj, dj, saved, icons] = await Promise.all([
+      fetch("data/chars.json", {cache:"no-cache"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }),
+      fetch("data/details.json", {cache:"no-cache"}).then(r=>r.ok?r.json():{}).catch(()=>({})),
+      idb.get("kv","user").catch(()=>null),
+      idb.all("icons").catch(()=>({})),
+    ]);
+    MASTER = new Map(cj.chars.map(c=>[c.n, c]));
+    DET = dj || {};
+    if (saved) U = Object.assign({own:{}, made:{}, ov:{}, extra:{}, del:{}}, saved);
+    for (const [n, b] of Object.entries(icons)) iconURL[n] = URL.createObjectURL(b);
+    $("dataver").textContent = `キャラデータ：${cj.updated || ""}時点・${cj.chars.length}体`;
+  } catch(e){
+    $("status").innerHTML = `<h2>データを読み込めませんでした</h2><div>通信状況を確認して、ページを再読み込みしてください。</div>`;
+    return;
+  }
+  $("icpanel").hidden = false;
+  renderUsage();
+  onData();
+  if (!Object.keys(U.own).length && !Object.keys(U.made).length && !Object.keys(iconURL).length){
+    $("status").hidden = true;
+    toast("はじめに「登録・管理」タブで所持状況のバックアップを読み込めます");
+  }
+})();
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+})();
+</script>
+</body>
+</html>
