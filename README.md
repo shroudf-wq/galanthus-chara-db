@@ -27,6 +27,10 @@
 ## Windows版
 `desktop/` にElectron用の `main.js` と `package.json` があります。`desktop/web/` にこのリポジトリの `index.html`（Service Worker登録を除いたもの）・`data/`・`icons/` を置いて、`@electron/packager` で `--platform=win32 --arch=x64` を指定してビルドします。
 
+### 新しいバージョンのお知らせ
+Windows版は起動時に `desktop/latest.json` の `version` を確認し、自分より新しければ画面上部にお知らせを出します（ダウンロードページは GitHub の Releases に固定。アプリが自分で実行ファイルを入れ替えることはしません）。
+新しい版を出すときは、先に Releases に zip を載せてから、`desktop/latest.json` の `version` を上げて push します（順番が逆だと、ダウンロードできない状態でお知らせが出ます）。
+
 ## データの出典
 ステータス等・フラワーメモリー・高難易度ステージの敵情報は「FLOWER KNIGHT GIRL Wiki*」（wikiwiki.jp/flower2ch）と「フラワーナイトガール攻略まとめwiki」（攻略wiki.com）の公開情報をもとにしています。
 キャラの画像は含みません（アイコンは各利用者が自分のスクショから端末内に登録します）。
