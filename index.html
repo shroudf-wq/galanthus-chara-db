@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-wqPHcVqI8UUx4CAGmHHwV809gYia7ABurcOOyZhpnCE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-v53emApMcN0UL7/rfGR1AbW9XgxB5vfmeMKNZbPvKsE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -273,6 +273,18 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
 .sl-x{position:absolute;top:2px;right:4px;font-size:16px;padding:0 4px}
 .tm-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
 .tm-meta .attr{width:auto}
+.st-box{display:flex;flex-direction:column;gap:8px}
+.st-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.st-row select{max-width:100%;min-width:0}
+.st-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.st-tags{display:flex;flex-wrap:wrap;gap:6px}
+.st-tags .tag{background:var(--accent-soft,var(--sunk));color:var(--ink,inherit)}
+.st-en{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:320px;overflow:auto}
+.st-en li{font-size:12.5px;border-top:1px solid var(--line);padding-top:4px}
+.st-en summary{cursor:pointer}
+.st-en .ab{color:var(--muted);margin:2px 0 0;white-space:pre-line;overflow-wrap:anywhere}
+.tm-stage{font-size:12.5px}
+.ts-list li.muted{display:block}
 .tm-warn{margin:10px 0 0;padding:8px 10px 8px 26px;background:var(--danger-soft);color:var(--danger);border-radius:8px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
 .tm-h{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:16px 0 6px}
 .tm-eff td{vertical-align:top}
@@ -476,6 +488,17 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
       </div>
       <div class="tm-right">
         <div class="panel">
+          <h2>ステージ（wikiの高難易度）</h2>
+          <div class="st-box">
+            <div class="st-row">
+              <label class="sel">種類 <select id="st-cat" aria-label="ステージの種類"></select></label>
+              <label class="sel">ステージ <select id="st-sel" aria-label="ステージ"></select></label>
+            </div>
+            <div id="st-info"></div>
+            <p class="note">選んだステージは今の編成に記録され、注意点の確認とたたき台作りに使われます。敵の情報はwiki（wikiwiki.jp/flower2ch）の表を自動で読み取ったもので、名前の後ろの属性は敵の弱点属性です。細かい攻略はwikiのページを見てください。</p>
+          </div>
+        </div>
+        <div class="panel">
           <h2>効果で探す</h2>
           <div class="trow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
             <select id="ts-key" aria-label="効果"></select>
@@ -656,7 +679,40 @@ function sanitizeDet(d){
   const url = typeof d.url === "string" && URL_OK.test(d.url) ? d.url.slice(0, 500) : "";
   return {fl:vStr(d.fl,200), eq:vStr(d.eq,400), url, sk, ab};
 }
-function sanitizeMaster(cj, dj, mj){
+const EATTR = ["斬","打","突","魔","無"];
+const STAGE_TAGS = {
+  weak:    ["弱点以外を軽減", "弱点属性で殴らないとダメージが通りにくい", {weak:.8}],
+  crit:    ["クリティカル以外を軽減", "クリティカルが出ないとダメージが通りにくい", {crit:1, critdmg:.8}],
+  nullhit: ["ダメージ無効・特殊回避", "1発目が消されるので手数（連撃・追撃）が欲しい", {multi:.8, chase:.6, react:.4}],
+  guts:    ["ガッツ持ち", "とどめに追加の攻撃が要る", {multi:.4, chase:.3}],
+  first:   ["先制攻撃", "こちらが動く前に殴られる", {nullify:.6, hpguard:.5, barrier:.5, guts:.4, dmgcut:.4}],
+  multi:   ["複数回行動・再行動", "被弾が多い", {e_act:.8, e_atk:.5, nullify:.4, barrier:.4}],
+  aoe:     ["全体攻撃", "全員が被弾する", {heal:.4, dmgcut:.5, hpguard:.4}],
+  defdown: ["花騎士の防御ダウン", "1発が重くなる", {nullify:.6, barrier:.6, guts:.4}],
+  atkdown: ["花騎士の攻撃ダウン", "火力が落ちる", {atk:.4, dmg:.3}],
+  skdown:  ["スキル発動率ダウン", "スキルが出にくい", {skrate:.6}],
+  hitup:   ["命中率アップ", "回避が当てにならない", {evade:-.4, spevade:-.2, nullify:.3}],
+  evade:   ["敵の回避率アップ", "攻撃が外れやすい", {multi:.3}],
+  heal:    ["HP回復", "削り切る火力が要る", {boss:.2, atk:.2}],
+  growth:  ["毎ターン攻撃力アップ", "長引くほど危ない", {atk:.3, skdmg:.3, skrate:.3, sd:.3}],
+};
+function sanitizeStages(list){
+  const out = [], seen = new Set();
+  if (!Array.isArray(list)) return out;
+  for (const s of list.slice(0, 2000)){
+    if (!s || typeof s !== "object") continue;
+    const id = vNum(s.id), nm = vStr(s.nm, 80);
+    if (!isNo(id) || !nm || seen.has(id)) continue; seen.add(id);
+    const en = Array.isArray(s.en) ? s.en.slice(0, 60).filter(e => e && typeof e === "object").map(e => ({n: vStr(e.n, 40), a: EATTR.includes(e.a) ? e.a : "?", t: vStr(e.t, 400)})).filter(e => e.n) : [];
+    const wk = Array.isArray(s.wk) ? [...new Set(s.wk.filter(a => ["斬","打","突","魔"].includes(a)))].slice(0, 4) : [];
+    const tags = Array.isArray(s.tags) ? [...new Set(s.tags.filter(t => typeof t === "string" && Object.hasOwn(STAGE_TAGS, t)))] : [];
+    const rec = vNum(s.rec);
+    const url = typeof s.url === "string" && URL_OK.test(s.url) ? s.url.slice(0, 500) : "";
+    out.push({id, cat: vStr(s.cat, 40) || "その他", nm, rec: isNo(rec) ? rec : 0, en, wk, tags, url});
+  }
+  return out;
+}
+function sanitizeMaster(cj, dj, mj, sj){
   if (!cj || typeof cj !== "object" || !Array.isArray(cj.chars)) throw new Error("bad master");
   const seen = new Set(), list = [];
   for (const c of cj.chars.slice(0, 20000)){ const x = sanitizeChar(c); if (x && !seen.has(x.n)){ seen.add(x.n); list.push(x); } }
@@ -666,7 +722,8 @@ function sanitizeMaster(cj, dj, mj){
     for (const [k, v] of Object.entries(dj)){ const n = vNum(k), x = sanitizeDet(v); if (isNo(n) && x) det[n] = x; }
   const rev = Number.isSafeInteger(cj.rev) && cj.rev >= 0 && cj.rev < 1e6 ? cj.rev : 0;
   const mem = sanitizeMem(mj && mj.list);
-  return {cj:{rev, updated:vStr(cj.updated, 20), chars:list}, dj:det, mem};
+  const st = sanitizeStages(sj && sj.list);
+  return {cj:{rev, updated:vStr(cj.updated, 20), chars:list}, dj:det, mem, st};
 }
 function sanitizeMem(list){
   const out = [], seen = new Set();
@@ -1131,6 +1188,7 @@ function sanitizeTeams(x){
     name: vStr(t.name, 40) || "編成",
     m: Array.from({length: 5}, (_, i) => { const n = vNum(Array.isArray(t.m) ? t.m[i] : null); return isNo(n) ? n : null; }),
     mem: isNo(vNum(t.mem)) ? vNum(t.mem) : null,
+    st: isNo(vNum(t.st)) ? vNum(t.st) : null,
   }));
 }
 let teamIdx = 0;
@@ -1182,7 +1240,23 @@ function teamSummary(t){
     if (!has("skrate")) warn.push("パーティ全体のスキル発動率アップがありません。");
   }
   const totalStat = members.reduce((s, c) => s + (c ? c.tot || 0 : 0), 0);
-  return {members, mem, agg, selfList, attrs, types, warn, totalStat};
+  const stage = t.st != null ? STAGES.find(x => x.id === t.st) || null : null;
+  const swarn = [];
+  if (stage && members.some(Boolean)){
+    const any = k => has(k) || selfList.some(e => e.key === k);
+    const tg = new Set(stage.tags);
+    if (stage.wk.length){
+      const n = members.filter(c => c && stage.wk.includes(c.a)).length;
+      if (tg.has("weak") && n < 3 && !any("attr")) swarn.push(`弱点以外の攻撃を減らす敵がいます。弱点属性（${stage.wk.join("・")}）のキャラが${n}人です。`);
+    }
+    if (tg.has("crit") && !any("crit")) swarn.push("クリティカル以外の攻撃を減らす敵がいます。クリティカル率を上げる効果がありません。");
+    if (tg.has("nullhit") && !["multi","chase","react"].some(any)) swarn.push("ダメージ無効化や特殊回避を持つ敵がいます。連撃・追撃・再行動がありません。");
+    if ((tg.has("first") || tg.has("defdown")) && !["nullify","barrier","hpguard","guts"].some(has)) swarn.push(`${tg.has("first") ? "先制攻撃" : "花騎士の防御ダウン"}があります。ダメージ無効化・防壁・HP保護・ガッツのどれもありません。`);
+    if (tg.has("multi") && !["e_act","e_atk","nullify","barrier"].some(has)) swarn.push("何度も行動する敵がいます。行動回数減少・攻撃力低下・無効化・防壁のどれもありません。");
+    if (tg.has("hitup") && ["evade","spevade"].some(any) && !["nullify","barrier"].some(has)) swarn.push("敵が命中率を上げてきます。回避に頼った守りは崩れやすいです。");
+    if (tg.has("skdown") && !has("skrate")) swarn.push("スキル発動率を下げてくる敵がいます。スキル発動率アップがありません。");
+  }
+  return {members, mem, agg, selfList, attrs, types, warn, totalStat, stage, swarn};
 }
 /* --- たたき台の自動提案 --- */
 const PRESETS = {
@@ -1202,8 +1276,13 @@ function scoreTeam(t, w){
   for (const e of s.selfList) if (w[e.key] && e.val != null) sc += .2 * w[e.key] * Math.sqrt(e.unit === "倍" ? (e.val - 1) * 100 : e.unit === "回" ? e.val * 25 : e.val);
   return sc;
 }
+function stageWeights(stage){
+  const w = {...PRESETS.bal.w};
+  for (const t of stage.tags) for (const [k, d] of Object.entries(STAGE_TAGS[t][2])) w[k] = Math.max(0, (w[k] || 0) + d);
+  return w;
+}
 function suggestTeam(presetKey, opts){
-  const w = PRESETS[presetKey].w;
+  const w = presetKey === "stage" && opts.stage ? stageWeights(opts.stage) : PRESETS[presetKey].w;
   let pool = chars.filter(c => (!opts.owned || c.own) && (!opts.attr || c.a === opts.attr) && charEffects(c).length);
   // 候補を単体の点数で上位に絞ってから組み合わせを探す
   const solo = pool.map(c => ({c, s: scoreTeam({m: [c.n, null, null, null, null], mem: null}, w)})).sort((a, b) => b.s - a.s).slice(0, 120).map(x => x.c);
@@ -1244,8 +1323,11 @@ function renderTeam(){
   const attrTxt = Object.entries(s.attrs).map(([a, n]) => `<span class="attr ${esc(a)}">${esc(a)}</span>×${n}`).join("　") || "—";
   const typeTxt = Object.entries(s.types).map(([a, n]) => `${esc(a)}×${n}`).join("　") || "—";
   $("tm-meta").innerHTML = `<span>属性：${attrTxt}</span><span>タイプ：${typeTxt}</span><span>総合力合計：<b class="num">${s.totalStat}</b></span>`;
-  $("tm-warn").innerHTML = s.warn.map(w => `<li>${esc(w)}</li>`).join("");
-  $("tm-warn").hidden = !s.warn.length;
+  const allWarn = [...s.swarn.map(w => "【ステージ】" + w), ...s.warn];
+  $("tm-warn").innerHTML = allWarn.map(w => `<li>${esc(w)}</li>`).join("");
+  $("tm-warn").hidden = !allWarn.length;
+  $("tm-meta").innerHTML += s.stage ? `<span>ステージ：<b>${esc(s.stage.cat)}／${esc(s.stage.nm)}</b></span>` : "";
+  renderStage();
   const rows = Object.values(s.agg).sort((a, b) => CAT_ORDER.indexOf(EFFECTS[a.key][1]) - CAT_ORDER.indexOf(EFFECTS[b.key][1]) || norm(b) - norm(a));
   let cat = "";
   $("tm-effects").innerHTML = rows.length ? rows.map(a => {
@@ -1305,19 +1387,54 @@ function initTeamUI(){
   };
   // メモリー選択
   $("tm-memsel").onchange = async e => { const id = vNum(e.target.value); await saveTeam(t => { t.mem = isNo(id) ? id : null; }); };
+  // ステージ
+  $("st-cat").onchange = () => { stCat = $("st-cat").value; fillStageSel(); };
+  $("st-sel").onchange = async e => {
+    const id = vNum(e.target.value); const stg = isNo(id) ? STAGES.find(x => x.id === id) : null;
+    await saveTeam(t => { t.st = stg ? stg.id : null; });
+    if (stg){ $("sg-preset").value = "stage"; if (stg.tags.includes("weak") && stg.wk[0]) $("sg-attr").value = stg.wk[0]; }
+  };
   // たたき台
-  $("sg-preset").innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join("");
+  $("sg-preset").innerHTML = `<option value="stage">選んだステージに合わせる</option>` + Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join("");
+  $("sg-preset").value = "boss";
   $("sg-attr").innerHTML = `<option value="">指定なし</option>` + ATTRS.map(a => `<option>${esc(a)}</option>`).join("");
   $("sg-go").onclick = async () => {
     const btn = $("sg-go"); btn.disabled = true; btn.textContent = "考えています…";
     await new Promise(r => setTimeout(r, 30));
     try {
-      const t = suggestTeam($("sg-preset").value, {owned: $("sg-owned").checked, attr: $("sg-attr").value});
+      const pk = $("sg-preset").value; const stg = curStage();
+      if (pk === "stage" && !stg){ toast("先に右上でステージを選んでください"); return; }
+      const t = suggestTeam(pk, {owned: $("sg-owned").checked, attr: $("sg-attr").value, stage: stg});
       if (!t.m.some(Boolean)){ toast("条件に合うキャラが見つかりませんでした"); return; }
-      await mutate(() => { U.teams = teams().slice(); U.teams.push({name: "たたき台：" + PRESETS[$("sg-preset").value].label + ($("sg-attr").value ? "・" + $("sg-attr").value : ""), m: t.m, mem: t.mem}); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); });
+      const label = pk === "stage" ? stg.nm : PRESETS[pk].label;
+      await mutate(() => { U.teams = teams().slice(); U.teams.push({name: ("たたき台：" + label + ($("sg-attr").value ? "・" + $("sg-attr").value : "")).slice(0, 40), m: t.m, mem: t.mem, st: pk === "stage" ? stg.id : curTeam().st}); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); });
       toast("たたき台を新しい編成として作りました");
     } finally { btn.disabled = false; btn.textContent = "たたき台を作る"; }
   };
+}
+let STAGES = [];
+let stCat = "";
+function curStage(){ const t = curTeam(); return t.st != null ? STAGES.find(x => x.id === t.st) || null : null; }
+function fillStageSel(){
+  const cur = curStage();
+  const list = STAGES.filter(x => x.cat === stCat);
+  $("st-sel").innerHTML = `<option value="">選ばない</option>` + list.map(x => `<option value="${x.id}"${cur && cur.id === x.id ? " selected" : ""}>${esc(x.nm)}</option>`).join("");
+}
+function renderStage(){
+  if (!$("st-cat")) return;
+  const cur = curStage();
+  const cats = [...new Set(STAGES.map(x => x.cat))];
+  if (cur) stCat = cur.cat; else if (!cats.includes(stCat)) stCat = cats[0] || "";
+  $("st-cat").innerHTML = cats.map(c => `<option${c === stCat ? " selected" : ""}>${esc(c)}</option>`).join("");
+  fillStageSel();
+  if (!cur){ $("st-info").innerHTML = STAGES.length ? `<p class="muted note">ステージを選ぶと、敵の弱点属性・注意点・敵のアビリティを表示します（${STAGES.length}ステージ）。</p>` : `<p class="muted note">ステージのデータがありません。</p>`; return; }
+  const wk = cur.wk.length ? cur.wk.map(a => `<span class="attr ${esc(a)}">${esc(a)}</span>`).join(" ") : "—";
+  const tags = cur.tags.map(t => `<span class="tag" title="${esc(STAGE_TAGS[t][1])}">${esc(STAGE_TAGS[t][0])}</span>`).join("");
+  const hints = cur.tags.map(t => `<li><b>${esc(STAGE_TAGS[t][0])}</b>：${esc(STAGE_TAGS[t][1])}</li>`).join("");
+  const en = cur.en.map(e => `<li><details><summary><b>${esc(e.n)}</b> ${e.a === "?" ? "" : `<span class="attr ${esc(e.a)}">${esc(e.a)}</span>`}</summary>${e.t ? `<p class="ab">${esc(e.t)}</p>` : `<p class="ab">（アビリティの記載なし）</p>`}</details></li>`).join("");
+  $("st-info").innerHTML = `<div class="st-meta"><span>推奨総合力：<b class="num">${cur.rec ? cur.rec.toLocaleString() : "—"}</b></span><span>敵の弱点：${wk}</span>${cur.url ? `<a href="${esc(cur.url)}" target="_blank" rel="noopener noreferrer">wikiで攻略を見る</a>` : ""}</div>`
+    + (tags ? `<div class="st-tags">${tags}</div><details class="tm-stage"><summary>注意点の説明</summary><ul class="tm-items">${hints}</ul></details>` : "")
+    + (en ? `<ul class="st-en">${en}</ul>` : `<p class="muted note">敵の一覧はwikiの表から読み取れませんでした。wikiのページを見てください。</p>`);
 }
 function renderTeamMemSelect(){
   const t = curTeam(); const own = MEM.filter(m => U.mown?.[m.id]); const rest = MEM.filter(m => !U.mown?.[m.id]);
@@ -2074,6 +2191,7 @@ let DATA_REV = 0, DATA_FROM = "", BUNDLED = null;
 function applyMaster(m, from){
   if (typeof effCache !== "undefined") effCache.clear();
   if (m.mem && m.mem.length) { MEM = m.mem; buildMemFilters(); }
+  if (m.st && m.st.length) STAGES = m.st;
   MASTER = new Map(m.cj.chars.map(c=>[c.n, c]));
   DET = m.dj || {};
   DATA_REV = m.cj.rev; DATA_FROM = from;
@@ -2095,14 +2213,15 @@ async function checkRemote(manual){
       else if (manual) toast("キャラデータは最新です");
       return;
     }
-    const [c, d, mj] = await Promise.all([getJSON(REMOTE + "chars.json?r=" + rev), getJSON(REMOTE + "details.json?r=" + rev), getJSON(REMOTE + "memories.json?r=" + rev).catch(() => null)]);
-    const m = sanitizeMaster(c, d, mj);                   // 検証してから
+    const [c, d, mj, sjr] = await Promise.all([getJSON(REMOTE + "chars.json?r=" + rev), getJSON(REMOTE + "details.json?r=" + rev), getJSON(REMOTE + "memories.json?r=" + rev).catch(() => null), getJSON(REMOTE + "stages.json?r=" + rev).catch(() => null)]);
+    const m = sanitizeMaster(c, d, mj, sjr);              // 検証してから
     if (!m.mem.length) m.mem = MEM;
+    if (!m.st.length) m.st = STAGES;
     if (m.cj.rev !== rev) throw new Error("rev mismatch");
     if (MASTER.size && m.cj.chars.length < MASTER.size * 0.8) throw new Error("too few characters");
     const before = MASTER.size;
     applyMaster(m, "GitHubから取得");                      // 画面に反映し
-    await idb.put("kv", "remoteData", {chars: m.cj, details: m.dj, memories: {list: m.mem}}).catch(()=>{});   // 問題がなければ保存
+    await idb.put("kv", "remoteData", {chars: m.cj, details: m.dj, memories: {list: m.mem}, stages: {list: m.st}}).catch(()=>{});   // 問題がなければ保存
     await reconcileExtras();
     onData();
     const added = m.cj.chars.length - before;
@@ -2113,16 +2232,17 @@ async function checkRemote(manual){
 
 (async () => {
   db = true;
-  const [c, d, saved, cached, mj] = await Promise.all([
+  const [c, d, saved, cached, mj, sj] = await Promise.all([
     getJSON("data/chars.json").catch(()=>null),
     getJSON("data/details.json").catch(()=>({})),
     idb.get("kv","user").catch(()=>null),
     idb.get("kv","remoteData").catch(()=>null),
     getJSON("data/memories.json").catch(()=>null),
+    getJSON("data/stages.json").catch(()=>null),
   ]);
-  try { if (c) BUNDLED = sanitizeMaster(c, d, mj); } catch(e){ BUNDLED = null; }
+  try { if (c) BUNDLED = sanitizeMaster(c, d, mj, sj); } catch(e){ BUNDLED = null; }
   let remote = null;
-  try { if (cached){ remote = sanitizeMaster(cached.chars, cached.details, cached.memories); if (!remote.mem.length && BUNDLED) remote.mem = BUNDLED.mem; } } catch(e){ idb.del("kv","remoteData").catch(()=>{}); }
+  try { if (cached){ remote = sanitizeMaster(cached.chars, cached.details, cached.memories, cached.stages); if (!remote.mem.length && BUNDLED) remote.mem = BUNDLED.mem; if (!remote.st.length && BUNDLED) remote.st = BUNDLED.st; } } catch(e){ idb.del("kv","remoteData").catch(()=>{}); }
   if (remote && (!BUNDLED || remote.cj.rev > BUNDLED.cj.rev)) applyMaster(remote, "GitHubから取得");
   else if (BUNDLED) applyMaster(BUNDLED, "アプリ同梱");
   U = sanitizeU(saved);
