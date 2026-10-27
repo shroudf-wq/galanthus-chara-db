@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-uuOWTIoG6N7ivw15IEa2tmWPndcB+pZPyQK4hsD95Vc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-jLqf/mm9+bJICOem9brjWPWba7701EYLLRr6RPrLJTw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -297,6 +297,20 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
 .set-box label.sel{display:flex;gap:6px;align-items:center;white-space:nowrap}
 .set-box label.sel select{flex:1 1 auto;min-width:0;width:100%}
 .slot[draggable]{padding-right:24px}
+.selbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:8px 10px;margin:8px 0;font-size:13px}
+.selbar b{margin-right:4px}
+tr.sel td,.cards-list li.sel{background:var(--accent-soft)}
+tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:var(--accent);font-weight:700}
+.tag.new{background:#d9480f;color:#fff}
+.tag.grow{background:var(--accent-soft);color:var(--accent)}
+.nmcell .tag{margin-left:6px;font-size:10.5px;padding:0 6px}
+.note-sec h3{margin:0 0 6px;font-size:15px}
+.note-sec textarea{width:100%;min-height:52px;margin-top:6px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:inherit;font:inherit;font-size:13px;resize:vertical}
+.sh-nav{display:flex;gap:4px;align-items:center}
+.sh-nav button{font-size:18px;line-height:1;padding:4px 10px}
+.toast button{margin-left:10px;background:transparent;border:1px solid currentColor;color:inherit;border-radius:999px;padding:1px 10px;font-size:12.5px;cursor:pointer}
+.fp-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dv-new{margin-left:8px}
 .st-cand-opts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;margin:6px 0}
 .tm-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
 .tm-meta .attr{width:auto}
@@ -437,6 +451,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
           <div class="sortm"><select id="sortsel" aria-label="並べ替え"><option value="n">No.順</option><option value="tot">総合力</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="mv">移動力</option><option value="nm">名前</option><option value="y">実装年度</option></select><button class="ghost" type="button" id="sortdir" aria-label="並び順を反転">↓</button></div>
           <button class="ghost fbtn" id="ftoggle" type="button" aria-expanded="false" aria-controls="fpanel">絞り込み<span class="badge" id="fcount" hidden></span></button>
           <button class="ghost" id="reset">クリア</button>
+          <button class="ghost" type="button" id="selmode" aria-pressed="false">まとめて選ぶ</button>
         </div>
         <div id="fpanel" class="fpanel">
         <div class="trow">
@@ -452,9 +467,18 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
           <label class="sel">所持 <select id="f-own"><option value="">すべて</option><option value="1">所持</option><option value="0">未所持</option></select></label>
           <label class="sel">作成 <select id="f-made"><option value="">すべて</option><option value="1">作成済み</option><option value="0">未作成</option></select></label>
           <label class="sel">評価S以上 <select id="f-grade"><option value="">指定なし</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="mv">移動力</option><option value="tot">総合力</option></select></label>
+          <label class="sel">育成 <select id="f-grow"><option value="">すべて</option><option value="b">開花済み</option><option value="nb">未開花</option><option value="s">昇華済み</option><option value="e">専用装備★6（錬成できる）</option><option value="m">メモあり</option></select></label>
+          <label class="sel">新着 <select id="f-nw"><option value="">すべて</option><option value="1">NEWのみ</option></select></label>
+        </div>
+        <div class="trow fp-row">
+          <label class="sel">保存した条件 <select id="fp-sel"><option value="">選ぶ…</option></select></label>
+          <button class="ghost" type="button" id="fp-save">今の条件を保存</button>
+          <button class="ghost" type="button" id="fp-del" disabled>削除</button>
+          <div class="tm-namebox" id="fp-box" hidden><input id="fp-name" maxlength="30" aria-label="保存する条件の名前" placeholder="名前（例：所持・★6・打）"><button class="primary" type="button" id="fp-ok">保存</button><button class="ghost" type="button" id="fp-cancel">やめる</button></div>
         </div>
         </div>
         <div class="count" id="count"></div>
+        <div class="selbar" id="selbar" hidden></div>
       </div>
       <ul class="cards-list" id="cardlist" hidden></ul>
       <div class="tablebox" id="tablebox">
@@ -510,6 +534,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
           <select id="tm-sel" aria-label="編成を選ぶ"></select>
           <button class="ghost" type="button" id="tm-new">新規</button>
           <button class="ghost" type="button" id="tm-dup">複製</button>
+          <button class="ghost" type="button" id="tm-img">画像で保存</button>
           <button class="ghost" type="button" id="tm-rename">名前</button>
           <button class="ghost" type="button" id="tm-clear">空にする</button>
           <button class="ghost" type="button" id="tm-del">削除</button>
@@ -662,6 +687,11 @@ function searchText(c){
   return c._st = [...(det.sk||[]).map(s=>s.n+" "+s.d), ...(top?top[1]:[]), det.eq||""].join("\n").toLowerCase();
 }
 const $ = id => document.getElementById(id);
+// 検索の表記ゆれをそろえる（全角半角・カタカナ/ひらがな・空白や括弧・中黒を無視）
+function kn(s){ return String(s ?? "").normalize("NFKC").toLowerCase().replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)).replace(/[\s・･()（）「」『』【】\[\]]/g, ""); }
+function knWords(q){ return String(q ?? "").normalize("NFKC").split(/\s+/).map(kn).filter(Boolean); }
+function knName(c){ return c._kn !== undefined ? c._kn : (c._kn = kn(c.nm)); }
+function knText(c){ return c._kt !== undefined ? c._kt : (c._kt = kn(searchText(c))); }
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 let db = null, canWrite = true;
@@ -670,7 +700,8 @@ let chars = [];            // merged list
 let calc = {};             // stat -> sorted ascending values
 let view = "list", mode = "val", limit = 400;
 let sortKey = "n", sortDir = 1;
-const F = { q:"", qa:"", attr:new Set(), nat:new Set(), rar:new Set(), tp:new Set(), year:"", src:"", like:"", own:"", made:"", grade:"" };
+const F = { q:"", qa:"", attr:new Set(), nat:new Set(), rar:new Set(), tp:new Set(), year:"", src:"", like:"", own:"", made:"", grade:"", grow:"", nw:"" };
+let NEWSET = new Set(), lastRows = [], selMode = false; const SEL = new Set();
 
 /* ---------- storage of UI prefs (per viewer, optional) ---------- */
 function loadPrefs(){ try{ const p = JSON.parse(localStorage.getItem("galanthus-ui")||"{}"); if(p.mode) mode=p.mode; if(p.sortKey){sortKey=p.sortKey; sortDir=p.sortDir||1;} }catch(e){} }
@@ -821,6 +852,25 @@ function migrateRS(teamsArr, old){
   }
   return ensureTeamIds(teamsArr);
 }
+function sanitizeNotes(x){
+  const o = {};
+  if (!x || typeof x !== "object" || Array.isArray(x)) return o;
+  for (const [k, v] of Object.entries(x).slice(0, 20000)){
+    const n = vNum(k); if (!isNo(n) || !v || typeof v !== "object") continue;
+    const g = {}; if (v.b) g.b = 1; if (v.s) g.s = 1; if (v.e) g.e = 1; const t = vStr(v.t, 300).trim(); if (t) g.t = t;
+    if (Object.keys(g).length) o[n] = g;
+  }
+  return o;
+}
+const FP_STR = ["q","qa","year","src","like","own","made","grade","grow","nw"], FP_SET = ["attr","nat","rar","tp"];
+function sanitizeFps(x){
+  if (!Array.isArray(x)) return [];
+  return x.slice(0, 30).filter(z => z && typeof z === "object" && z.f && typeof z.f === "object").map(z => {
+    const f = {}; for (const k of FP_STR) f[k] = vStr(z.f[k], 60); for (const k of FP_SET) f[k] = Array.isArray(z.f[k]) ? z.f[k].slice(0, 30).map(v => vStr(v, 30)).filter(Boolean) : [];
+    const sk = COLS.some(c => c.k === z.sk) ? z.sk : "n";
+    return {name: vStr(z.name, 30) || "条件", f, sk, sd: z.sd === -1 ? -1 : 1};
+  });
+}
 function sanitizeU(x){
   const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}};
   if (!x || typeof x !== "object" || Array.isArray(x)) return u;
@@ -828,6 +878,8 @@ function sanitizeU(x){
   u.mown = noMap(x.mown); u.mmax = noMap(x.mmax);
   u.teams = migrateRS(sanitizeTeams(x.teams), x.rs);
   u.sets = sanitizeSets(x.sets);
+  u.notes = sanitizeNotes(x.notes);
+  u.fps = sanitizeFps(x.fps);
   if (x.ov && typeof x.ov === "object" && !Array.isArray(x.ov))
     for (const [k, v] of Object.entries(x.ov)){ const n = vNum(k), o = sanitizeChar(v, true); if (isNo(n) && o && Object.keys(o).length) u.ov[n] = o; }
   if (x.extra && typeof x.extra === "object" && !Array.isArray(x.extra))
@@ -837,7 +889,7 @@ function sanitizeU(x){
 
 /* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
 let MASTER = new Map();
-let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[], sets:[]};
+let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[], sets:[], notes:{}, fps:[]};
 const iconURL = {};
 const USER_FIELDS = ["own","made","ic"];
 const idb = (() => {
@@ -876,9 +928,12 @@ if (BC) BC.onmessage = async e => {
   else if (e.data === "icons"){ await reloadIcons(); onData(); renderUsage(); }
 };
 // 他のタブで変わっていても上書きしないよう、毎回保存済みの最新を読み直してから変更を当てる
-async function mutate(fn){
+let undoSnap = null;
+async function mutate(fn, undoMsg){
+  let snap = null;
   const run = async () => {
     try { const fresh = await idb.get("kv","user"); if (fresh) U = sanitizeU(fresh); } catch(e){}
+    if (undoMsg) snap = JSON.stringify(U);
     fn();
     await idb.put("kv", "user", U);
   };
@@ -886,12 +941,13 @@ async function mutate(fn){
   BC?.postMessage("user");
   if (!persistAsked && navigator.storage?.persist){ persistAsked = true; navigator.storage.persist().catch(()=>{}); }
   onData();
+  if (undoMsg && snap){ undoSnap = snap; toast(undoMsg, "元に戻す", async () => { const s = undoSnap; undoSnap = null; if (!s) return; await mutate(() => { U = sanitizeU(JSON.parse(s)); }); toast("元に戻しました"); }); }
 }
 function rebuild(){
   const list = [];
   for (const [n, m] of MASTER){ if (U.del[n]) continue; list.push({...m, ...(U.ov[n]||{})}); }
   for (const [n, e] of Object.entries(U.extra)) if (!MASTER.has(Number(n))) list.push({...e});
-  for (const c of list){ c.own = !!U.own[c.n]; c.made = !!U.made[c.n]; c.ic = iconURL[c.n] ? "1" : ""; }
+  for (const c of list){ c.own = !!U.own[c.n]; c.made = !!U.made[c.n]; c.ic = iconURL[c.n] ? "1" : ""; c.nw = NEWSET.has(c.n); }
   list.sort((a,b)=>a.n-b.n);
   chars = list; recompute();
   buildFilters(); renderSummary(); render();
@@ -922,7 +978,7 @@ async function writeChars(list){
     }
   });
 }
-async function patchChar(c, patch){
+async function patchChar(c, patch, undoMsg){
   await mutate(() => {
     const rest = {};
     for (const [k,v] of Object.entries(patch)){
@@ -930,7 +986,7 @@ async function patchChar(c, patch){
       else if (k !== "ic" && k !== "n") rest[k] = v;
     }
     if (Object.keys(rest).length) applyPatch(c.n, rest);
-  });
+  }, undoMsg);
 }
 async function deleteChar(c){
   await removeIcon(c.n);
@@ -1002,18 +1058,22 @@ function buildFilters(){
   fillSelect($("f-like"), uniq(LIKES_BASE,"like"), F.like);
 }
 function matches(c){
-  if (F.q){ const q = F.q.toLowerCase(); if (!c.nm.toLowerCase().includes(q)) return false; }
+  if (F.q){ const nm = knName(c); if (!knWords(F.q).every(w => nm.includes(w))) return false; }
   if (F.attr.size && !F.attr.has(c.a)) return false;
   if (F.nat.size && !F.nat.has(c.k)) return false;
   if (F.rar.size && !F.rar.has(c.r)) return false;
   if (F.tp.size && !F.tp.has(c.tp)) return false;
-  if (F.qa){ const t = searchText(c); if (!F.qa.split(/\s+/).every(w => t.includes(w))) return false; }
+  if (F.qa){ const t = knText(c); if (!knWords(F.qa).every(w => t.includes(w))) return false; }
   if (F.year && String(c.y) !== F.year) return false;
   if (F.src && c.src !== F.src) return false;
   if (F.like && c.like !== F.like) return false;
   if (F.own && (c.own ? "1":"0") !== F.own) return false;
   if (F.made && (c.made ? "1":"0") !== F.made) return false;
   if (F.grade && mOf(c,F.grade).grade !== "S") return false;
+  if (F.grow){ const g = U.notes?.[c.n] || {};
+    if (F.grow === "b" && !g.b) return false; if (F.grow === "nb" && g.b) return false;
+    if (F.grow === "s" && !g.s) return false; if (F.grow === "e" && !g.e) return false; if (F.grow === "m" && !g.t) return false; }
+  if (F.nw && !NEWSET.has(c.n)) return false;
   return true;
 }
 
@@ -1044,6 +1104,8 @@ function render(){
   rows.sort((a,b)=>{ const x=sortVal(a,k), y=sortVal(b,k); if (x===y) return a.n-b.n; if (typeof x==="string") return x.localeCompare(y,"ja")*d; return (x<y?-1:1)*d; });
   $("count").innerHTML = `<b>${rows.length}</b> / ${chars.length} 体`;
   updateFilterBadge(); syncSortUI();
+  lastRows = rows.map(c => c.n);
+  renderSelBar();
   const shown = rows.slice(0, limit);
   if (MOBILE.matches){
     $("tbody").innerHTML = ""; $("cardlist").hidden = false;
@@ -1054,11 +1116,11 @@ function render(){
   $("cardlist").hidden = true; $("cardlist").innerHTML = "";
   $("tbody").innerHTML = shown.map(c => {
     const lim = c.src === "期間限定";
-    return `<tr data-n="${esc(c.n)}" class="${c.own?"":"missing"}">
+    return `<tr data-n="${esc(c.n)}" class="${c.own?"":"missing"}${SEL.has(c.n)?" sel":""}">
       <td class="no r">${esc(c.n)}</td>
       <td><span class="attr ${esc(c.a)}">${esc(c.a)}</span></td>
       <td>${esc(c.k)}</td>
-      <td class="name" title="${esc(c.nm)}"><span class="nmcell">${iconHTML(c)}<span>${esc(c.nm)}</span></span></td>
+      <td class="name" title="${esc(c.nm)}"><span class="nmcell">${iconHTML(c)}<span>${esc(c.nm)}</span>${c.nw?`<span class="tag new">NEW</span>`:""}${growTags(c)}</span></td>
       <td class="rar">${esc(c.r)}</td>
       <td class="tp">${esc(c.tp||"")}</td>
       <td class="r">${statCell(c,"hp")}</td><td class="r">${statCell(c,"at")}</td><td class="r">${statCell(c,"df")}</td><td class="r">${statCell(c,"mv")}</td><td class="r">${statCell(c,"tot")}</td>
@@ -1077,15 +1139,38 @@ MOBILE.addEventListener?.("change", () => render());
 function cardHTML(c){
   const stat = (k,l) => { const m = mOf(c,k); const v = mode==="rank" ? m.rank+"位" : mode==="pct" ? Math.round(m.pct*100)+"%" : c[k];
     return `<div class="ms"><small>${l}</small><span>${esc(v)}<i class="g ${m.grade}">${m.grade}</i></span></div>`; };
-  return `<li data-n="${esc(c.n)}">${iconHTML(c)}
+  return `<li data-n="${esc(c.n)}" class="${SEL.has(c.n)?"sel":""}">${iconHTML(c)}
     <div class="cl-name"><span class="no">${esc(c.n)}</span>${esc(c.nm)}</div>
     <button class="own ${c.own?"on":"off"}" data-act="own" aria-label="所持を切り替え">${c.own?"所持":"未所持"}</button>
-    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${esc(c.y||"")}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}</div>
+    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${esc(c.y||"")}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}${c.nw?`<span class="tag new">NEW</span>`:""}${growTags(c)}</div>
     <div class="cl-stats">${stat("hp","HP")}${stat("at","攻撃")}${stat("df","防御")}${stat("mv","移動")}${stat("tot","総合")}</div></li>`;
 }
+function growTags(c){
+  const g = U.notes?.[c.n]; if (!g) return "";
+  return (g.b ? `<span class="tag grow">開花</span>` : "") + (g.s ? `<span class="tag grow">昇華</span>` : "") + (g.e ? `<span class="tag grow">専★6</span>` : "") + (g.t ? `<span class="tag grow" title="${esc(g.t)}">メモ</span>` : "");
+}
+/* --- まとめて選ぶ --- */
+function renderSelBar(){
+  const bar = $("selbar"); bar.hidden = !selMode;
+  $("selmode").setAttribute("aria-pressed", selMode); $("selmode").textContent = selMode ? "選ぶのをやめる" : "まとめて選ぶ";
+  if (!selMode) return;
+  bar.innerHTML = `<b>${SEL.size}体を選択中</b><button class="ghost" type="button" data-sb="all">表示中の${lastRows.length}体をすべて選ぶ</button><button class="ghost" type="button" data-sb="none"${SEL.size ? "" : " disabled"}>選択を外す</button>`
+    + `<button class="primary" type="button" data-sb="own"${SEL.size ? "" : " disabled"}>所持にする</button><button class="ghost" type="button" data-sb="unown"${SEL.size ? "" : " disabled"}>未所持にする</button><button class="ghost" type="button" data-sb="made"${SEL.size ? "" : " disabled"}>作成済みにする</button>`;
+}
+function toggleSel(n){ if (SEL.has(n)) SEL.delete(n); else SEL.add(n); render(); }
+$("selmode").onclick = () => { selMode = !selMode; if (!selMode) SEL.clear(); render(); };
+$("selbar").onclick = async e => {
+  const a = e.target.dataset.sb; if (!a) return;
+  if (a === "all"){ for (const n of lastRows) SEL.add(n); render(); return; }
+  if (a === "none"){ SEL.clear(); render(); return; }
+  const ns = [...SEL]; if (!ns.length) return;
+  const label = a === "own" ? "所持にしました" : a === "unown" ? "未所持にしました" : "作成済みにしました";
+  await mutate(() => { for (const n of ns){ if (a === "own") U.own[n] = 1; else if (a === "unown") delete U.own[n]; else U.made[n] = 1; } }, `${ns.length}体を${label}`);
+  SEL.clear(); render();
+};
 function activeFilterCount(){
   let n = F.attr.size + F.nat.size + F.rar.size + F.tp.size;
-  for (const k of ["year","src","like","own","made","grade"]) if (F[k]) n++;
+  for (const k of ["year","src","like","own","made","grade","grow","nw"]) if (F[k]) n++;
   return n;
 }
 function updateFilterBadge(){ const n = activeFilterCount(); $("fcount").hidden = !n; $("fcount").textContent = n; }
@@ -1102,7 +1187,8 @@ $("cardlist").addEventListener("click", async e => {
   if (e.target.id === "cl-more"){ limit += 600; render(); return; }
   const li = e.target.closest("li[data-n]"); if (!li) return;
   const c = chars.find(x=>x.n===Number(li.dataset.n)); if (!c) return;
-  if (e.target.dataset.act === "own"){ e.stopPropagation(); try { await patchChar(c, {own: !c.own}); } catch(err){ writeError(err); } return; }
+  if (e.target.dataset.act === "own"){ e.stopPropagation(); try { await patchChar(c, {own: !c.own}, `${c.nm}を${!c.own ? "所持" : "未所持"}にしました`); } catch(err){ writeError(err); } return; }
+  if (selMode){ toggleSel(c.n); return; }
   openSheet(c.n);
 });
 /* ===== アビリティ文章 → 効果データ ===== */
@@ -1313,8 +1399,8 @@ function swapSlots(t, a, b){
 try { teamIdx = Math.max(0, Number(localStorage.getItem("galanthus-team")) || 0); } catch(e){}
 function teams(){ return U.teams && U.teams.length ? U.teams : [emptyTeam()]; }
 function curTeam(){ const t = teams(); if (teamIdx >= t.length) teamIdx = 0; return t[teamIdx]; }
-async function saveTeam(fn){
-  await mutate(() => { if (!U.teams || !U.teams.length) U.teams = [emptyTeam()]; if (teamIdx >= U.teams.length) teamIdx = 0; fn(U.teams[teamIdx], U.teams); U.teams = sanitizeTeams(U.teams); });
+async function saveTeam(fn, undoMsg){
+  await mutate(() => { if (!U.teams || !U.teams.length) U.teams = [emptyTeam()]; if (teamIdx >= U.teams.length) teamIdx = 0; fn(U.teams[teamIdx], U.teams); U.teams = sanitizeTeams(U.teams); }, undoMsg);
   try { localStorage.setItem("galanthus-team", teamIdx); } catch(e){}
 }
 async function addToTeam(n){
@@ -1521,7 +1607,7 @@ function initSetUI(){
   $("set-rename").onclick = () => { if (!sets().length) return; $("set-namebox").hidden = false; $("set-name").value = sets()[setIdx].name; $("set-name").focus(); };
   $("set-nameok").onclick = async () => { const v = $("set-name").value.trim(); if (v) await saveSet(z => { z.name = v; }); $("set-namebox").hidden = true; };
   $("set-namecancel").onclick = () => { $("set-namebox").hidden = true; };
-  $("set-del").onclick = async () => { if (!sets().length) return; await mutate(() => { U.sets = sets().slice(); U.sets.splice(setIdx, 1); setIdx = Math.max(0, setIdx - 1); }); toast("出撃セットを削除しました（中の編成は残っています）"); };
+  $("set-del").onclick = async () => { if (!sets().length) return; await mutate(() => { U.sets = sets().slice(); U.sets.splice(setIdx, 1); setIdx = Math.max(0, setIdx - 1); }, "出撃セットを削除しました（中の編成は残っています）"); };
   $("set-body").onchange = async e => {
     if (e.target.id === "set-st"){ const id = vNum(e.target.value); await saveSet(z => { z.st = isNo(id) ? id : null; }); return; }
     const i = Number(e.target.dataset.pi); if (!(i >= 0 && i < 4)) return;
@@ -1581,12 +1667,73 @@ function renderRSRef(){
   const t = $("rs-ball").value;
   $("rs-ref").innerHTML = RS_LIST.filter(r => !t || r.t.includes(t)).map(r => `<tr><td>${esc(r.l)}</td><td class="r num">${r.lo == null ? "—" : esc(r.lo + "〜" + r.hi + r.u)}</td></tr>`).join("");
 }
+/* --- 編成を1枚の画像にする --- */
+function effSummaryRows(s){
+  const mlist = l => l.length ? (l.length === 1 ? fmtVal(l[0], "倍") : `最大${fmtVal(Math.max(...l), "倍")}（${l.length}件）`) : "";
+  return Object.values(s.agg).sort((a, b) => CAT_ORDER.indexOf(EFFECTS[a.key][1]) - CAT_ORDER.indexOf(EFFECTS[b.key][1]) || norm(b) - norm(a)).map(a => ({
+    cat: EFFECTS[a.key][1], label: EFFECTS[a.key][0],
+    alw: a.unit === "倍" ? mlist(a.mults) : (a.always ? fmtVal(a.always, a.unit) : (a.items.some(i => !i.isCond) ? "あり" : "")),
+    cnd: a.unit === "倍" ? mlist(a.multsCond) : (a.cond ? fmtVal(a.cond, a.unit) : (a.items.some(i => i.isCond) ? "あり" : "")),
+  }));
+}
+function loadImg(src){ return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+async function teamImage(){
+  const t = curTeam(), s = teamSummary(t);
+  if (!s.members.some(Boolean)){ toast("キャラが入っていません"); return; }
+  const W = 1200, P = 40, FONT = '"Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",sans-serif';
+  const AC = {"斬":"#c92a2a","打":"#1c6dd0","突":"#c99400","魔":"#7b3fc4","夢":"#d6336c"};
+  const rows = effSummaryRows(s).slice(0, 22);
+  const warns = [...s.swarn, ...s.warn.filter(w => !/未所持/.test(w))].slice(0, 6);
+  const H = P + 70 + 250 + 40 + 30 + Math.ceil(rows.length / 2) * 30 + (warns.length ? 40 + warns.length * 26 : 0) + 60;
+  const cv = document.createElement("canvas"); const scale = 2; cv.width = W * scale; cv.height = H * scale;
+  const g = cv.getContext("2d"); g.scale(scale, scale);
+  g.fillStyle = "#f6f8f5"; g.fillRect(0, 0, W, H);
+  const txt = (str, x, y, size, color, weight, max) => { g.font = `${weight || 400} ${size}px ${FONT}`; g.fillStyle = color || "#1f2a22"; let v = String(str ?? ""); if (max) while (v.length > 1 && g.measureText(v).width > max) v = v.slice(0, -2) + "…"; g.fillText(v, x, y); };
+  const rr = (x, y, w, h, r, fill, stroke) => { g.beginPath(); g.roundRect(x, y, w, h, r); if (fill){ g.fillStyle = fill; g.fill(); } if (stroke){ g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); } };
+  txt(t.name, P, P + 30, 28, "#1f2a22", 700, W - 2 * P);
+  txt((s.stage ? `ステージ：${s.stage.cat}／${s.stage.nm}　` : "") + `ステータス合計 ${s.totalStat.toLocaleString()}`, P, P + 60, 15, "#5b6b60", 400, W - 2 * P);
+  const cw = (W - 2 * P - 4 * 16) / 5, top = P + 80;
+  const imgs = await Promise.all(s.members.map(c => c ? loadImg(iconURL[c.n]) : null));
+  s.members.forEach((c, i) => {
+    const x = P + i * (cw + 16);
+    rr(x, top, cw, 240, 14, "#ffffff", "#d5ddd7");
+    if (!c){ txt("空き", x + cw / 2 - 16, top + 125, 16, "#a3b0a7"); return; }
+    const isz = 96, ix = x + (cw - isz) / 2, iy = top + 16;
+    if (imgs[i]){ g.save(); g.beginPath(); g.roundRect(ix, iy, isz, isz, 12); g.clip(); g.drawImage(imgs[i], ix, iy, isz, isz); g.restore(); }
+    else { rr(ix, iy, isz, isz, 12, "#eef2ef"); txt(c.nm.slice(0, 1), ix + 30, iy + 64, 40, AC[c.a] || "#333", 700); }
+    txt(c.nm, x + 12, top + 140, 15, "#1f2a22", 700, cw - 24);
+    txt(c.a, x + 12, top + 164, 14, AC[c.a] || "#333", 700); txt(c.tp || "", x + 34, top + 164, 13, "#5b6b60", 400, cw - 46);
+    const m = s.mems[i]; txt(m ? "◆ " + m.nm : "◆ メモリーなし", x + 12, top + 192, 12.5, m ? "#2f6b4a" : "#a3b0a7", 400, cw - 24);
+    const rsN = (t.rs?.[i] || []).filter(e => e.id).length; if (rsN) txt(`百花錬成 ${rsN}枠`, x + 12, top + 216, 12.5, "#2f6b4a", 400, cw - 24);
+  });
+  let y = top + 240 + 40;
+  txt("パーティ全体・敵への効果", P, y, 16, "#1f2a22", 700); y += 14;
+  const colW = (W - 2 * P - 24) / 2;
+  rows.forEach((r, k) => {
+    const x = P + (k % 2) * (colW + 24), yy = y + 26 + Math.floor(k / 2) * 30;
+    if (k % 4 < 2) rr(x - 6, yy - 20, colW + 12, 28, 6, "#ffffff");
+    txt(r.label, x, yy, 14, "#1f2a22", 400, colW * 0.5);
+    g.font = `400 14px ${FONT}`; const val = r.alw ? r.alw + (r.cnd ? `（条件付き＋${r.cnd}）` : "") : `条件付き ${r.cnd}`; const vw = Math.min(g.measureText(val).width, colW * 0.48);
+    txt(val, x + colW - vw, yy, 14, "#2f6b4a", 700, colW * 0.48);
+  });
+  y += 26 + Math.ceil(rows.length / 2) * 30;
+  if (warns.length){
+    y += 10; txt("注意点", P, y, 16, "#b02a2a", 700);
+    warns.forEach((w, k) => txt("・" + w, P, y + 26 + k * 26, 13.5, "#b02a2a", 400, W - 2 * P));
+    y += 26 + warns.length * 26;
+  }
+  txt("Galanthus キャラDB ・ 効果はアビリティの文章から読み取った目安です", P, H - 22, 12, "#8a988f");
+  const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+  if (!blob){ toast("画像を作れませんでした"); return; }
+  const d = new Date(), pad = x => String(x).padStart(2, "0");
+  downloadBlob(`galanthus_team_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.png`, blob);
+}
 function renderTeamSearch(){
-  const k = TF.key; const words = TF.q ? TF.q.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  const k = TF.key; const words = knWords(TF.q);
   const res = [];
   for (const c of chars){
     if (TF.owned && !c.own) continue;
-    if (words.length && !words.every(w => c.nm.toLowerCase().includes(w))) continue;
+    if (words.length && !words.every(w => knName(c).includes(w))) continue;
     const effs = charEffects(c).filter(e => e.key === k && (!TF.wide || e.scope !== "self") && (!TF.nocond || !(e.conditional || e.dyn)));
     if (!effs.length) continue;
     const best = effs.reduce((a, b) => ((b.val ?? 0) > (a.val ?? 0) ? b : a));
@@ -1606,7 +1753,7 @@ function initTeamUI(){
   let qt2; $("ts-q").oninput = e => { clearTimeout(qt2); qt2 = setTimeout(() => { TF.q = e.target.value.trim(); renderTeamSearch(); }, 150); };
   $("ts-list").onclick = e => { const n = Number(e.target.dataset.add); if (isNo(n)) addToTeam(n); else { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); } };
   $("tm-slots").onclick = async e => {
-    if (e.target.dataset.rm != null){ const i = Number(e.target.dataset.rm); await saveTeam(t => { t.m[i] = null; t.mems[i] = null; t.rs[i] = []; }); if (rsOpen === i) rsOpen = null; return; }
+    if (e.target.dataset.rm != null){ const i = Number(e.target.dataset.rm); const nm = chars.find(x => x.n === curTeam().m[i])?.nm || "キャラ"; await saveTeam(t => { t.m[i] = null; t.mems[i] = null; t.rs[i] = []; }, `${nm}を外しました`); if (rsOpen === i) rsOpen = null; return; }
     if (e.target.id === "tm-tgt-x"){ tgtSlot = null; renderTeam(); return; }
     if (e.target.dataset.sw != null){
       const i = Number(e.target.dataset.sw);
@@ -1628,6 +1775,7 @@ function initTeamUI(){
   $("tm-slots").addEventListener("dragleave", e => { const col = e.target.closest?.("[data-col]"); if (col) col.querySelector(".slot")?.classList.remove("dragover"); });
   $("tm-slots").addEventListener("drop", async e => { const col = e.target.closest?.("[data-col]"); if (!col || dragFrom == null) return; e.preventDefault(); const a = dragFrom, b = Number(col.dataset.col); dragFrom = null; if (a !== b){ tgtSlot = null; await saveTeam(t => swapSlots(t, a, b)); } else renderTeam(); });
   $("tm-slots").addEventListener("dragend", () => { dragFrom = null; $("tm-slots").querySelectorAll(".dragover").forEach(x => x.classList.remove("dragover")); });
+  $("tm-img").onclick = async () => { const b = $("tm-img"); b.disabled = true; try { await teamImage(); } catch(e){ toast("画像を作れませんでした"); } finally { b.disabled = false; } };
   $("tm-dup").onclick = async () => {
     const src = curTeam();
     await mutate(() => { U.teams = teams().slice(); const c = JSON.parse(JSON.stringify(src)); c.id = null; c.name = (src.name + "のコピー").slice(0, 40); U.teams.splice(teamIdx + 1, 0, c); teamIdx = teamIdx + 1; U.teams = sanitizeTeams(U.teams); });
@@ -1640,10 +1788,10 @@ function initTeamUI(){
   };
   $("tm-nameok").onclick = async () => { const v = $("tm-name").value.trim(); if (v) await saveTeam(t => { t.name = v; }); $("tm-namebox").hidden = true; };
   $("tm-namecancel").onclick = () => { $("tm-namebox").hidden = true; };
-  $("tm-clear").onclick = async () => { await saveTeam(t => { t.m = [null, null, null, null, null]; t.mems = [null, null, null, null, null]; t.rs = [[], [], [], [], []]; }); rsOpen = null; };
+  $("tm-clear").onclick = async () => { await saveTeam(t => { t.m = [null, null, null, null, null]; t.mems = [null, null, null, null, null]; t.rs = [[], [], [], [], []]; }, "編成を空にしました"); rsOpen = null; };
   $("tm-del").onclick = async () => {
     if (teams().length <= 1){ await saveTeam(t => { Object.assign(t, emptyTeam(t.name)); }); return; }
-    await mutate(() => { U.teams = teams().slice(); U.teams.splice(teamIdx, 1); teamIdx = Math.max(0, teamIdx - 1); U.teams = sanitizeTeams(U.teams); });
+    const nm = curTeam().name; await mutate(() => { U.teams = teams().slice(); U.teams.splice(teamIdx, 1); teamIdx = Math.max(0, teamIdx - 1); U.teams = sanitizeTeams(U.teams); }, `「${nm}」を削除しました`);
   };
   // メモリー選択
   $("tm-slots").onchange = async e => {
@@ -1753,14 +1901,14 @@ function buildMemFilters(){
 }
 function renderMem(){
   if (!MEM.length){ $("memlist").innerHTML = `<li class="mm-empty">フラワーメモリーのデータがまだありません。「登録・管理」の「最新データを確認」で取得できます。</li>`; $("mcount").textContent = ""; return; }
-  const words = MF.q ? MF.q.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  const words = knWords(MF.q);
   let list = MEM.filter(m => {
     if (MF.r.size && !MF.r.has(m.r)) return false;
     if (MF.own === "1" && !U.mown[m.id]) return false;
     if (MF.own === "0" && U.mown[m.id]) return false;
     if (MF.own === "max" && !U.mmax[m.id]) return false;
     if (MF.src && !m.src.startsWith(MF.src)) return false;
-    if (words.length){ const t = (m.nm + "\n" + m.ab.join("\n") + "\n" + m.abMax.join("\n")).toLowerCase(); if (!words.every(w => t.includes(w))) return false; }
+    if (words.length){ const t = m._kt ?? (m._kt = kn(m.nm + "\n" + m.ab.join("\n") + "\n" + m.abMax.join("\n"))); if (!words.every(w => t.includes(w))) return false; }
     return true;
   });
   const k = MF.sort, d = MF.dir;
@@ -1964,17 +2112,22 @@ function openSheet(n){
       <div class="icbtns">${iconHTML(c,"lg")}${assets && canWrite ? `<button class="linkbtn" id="ic-set" type="button">${c.ic?"変更":"アイコン設定"}</button>${c.ic?`<button class="linkbtn del" id="ic-del" type="button">削除</button>`:""}` : ""}</div>
       <div style="min-width:0"><h2 id="sh-name">${esc(c.nm)}</h2>
       <div class="meta"><span class="num">No.${esc(c.n)}</span><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span><span>${esc(c.y||"")}年</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}</div></div></div>
-      <button class="x" id="sh-close" aria-label="閉じる">×</button></div>
+      <div class="sh-nav"><button class="ghost" type="button" id="sh-prev" aria-label="前のキャラ" title="前のキャラ（←）">‹</button><button class="ghost" type="button" id="sh-next" aria-label="次のキャラ" title="次のキャラ（→）">›</button><button class="x" id="sh-close" aria-label="閉じる">×</button></div></div>
     <div class="sheet-b">
       <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${esc(c[k])}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
       <div id="cropper" hidden></div>
       ${detailHTML(c)}
+      ${canWrite ? noteHTML(c) : ""}
       ${canWrite ? `<form id="edform" autocomplete="off"><div class="formgrid">${fieldsHTML("ed", c)}</div>
         <div class="actions"><button class="primary" type="submit">変更を保存</button><button class="ghost" type="button" id="ed-team">編成に入れる</button><button class="danger" type="button" id="ed-del">削除</button><span class="err" id="ed-err"></span></div>
         <div id="ed-confirm"></div></form>` : `<p class="note">閲覧のみです。</p>`}
     </div>`;
   s.hidden = false; $("scrim").hidden = false;
   $("sh-close").onclick = closeSheet;
+  $("sh-prev").onclick = () => sheetStep(-1); $("sh-next").onclick = () => sheetStep(1);
+  const order = sheetOrder(); const at = order.indexOf(n);
+  $("sh-prev").disabled = at <= 0; $("sh-next").disabled = at < 0 || at >= order.length - 1;
+  bindNote(c);
   if (!canWrite) return;
   if ($("ic-set")) $("ic-set").onclick = () => startCrop(c);
   if ($("ic-del")) $("ic-del").onclick = async () => {
@@ -2335,9 +2488,37 @@ $("zkover").onchange = () => renderZukan();
 })();
 
 document.addEventListener("click", e => { if (e.target && e.target.id === "ed-team" && openNo != null){ addToTeam(openNo); } });
+function sheetOrder(){ return view === "list" && lastRows.length ? lastRows : chars.map(c => c.n); }
+function sheetStep(d){
+  if (openNo === null) return; const order = sheetOrder(); const i = order.indexOf(openNo);
+  const j = i + d; if (i < 0 || j < 0 || j >= order.length) return; openSheet(order[j]);
+}
+function noteHTML(c){
+  const g = U.notes?.[c.n] || {};
+  return `<section class="note-sec"><h3>育成メモ</h3><div class="checks">`
+    + `<label><input type="checkbox" class="mk" data-nf="b"${g.b ? " checked" : ""}> 開花済み</label>`
+    + `<label><input type="checkbox" class="mk" data-nf="s"${g.s ? " checked" : ""}> 昇華済み</label>`
+    + `<label><input type="checkbox" class="mk" data-nf="e"${g.e ? " checked" : ""}> 専用装備★6進化済み（百花錬成できる）</label></div>`
+    + `<textarea id="nt-memo" maxlength="300" aria-label="育成メモ" placeholder="メモ（例：スキルLv5、錬成予定）">${esc(g.t || "")}</textarea></section>`;
+}
+function bindNote(c){
+  const sec = document.querySelector("#sheet .note-sec"); if (!sec) return;
+  const save = fn => mutate(() => { U.notes = U.notes || {}; const g = {...(U.notes[c.n] || {})}; fn(g); U.notes[c.n] = g; U.notes = sanitizeNotes(U.notes); });
+  sec.querySelectorAll("[data-nf]").forEach(b => b.onchange = () => save(g => { if (b.checked) g[b.dataset.nf] = 1; else delete g[b.dataset.nf]; }));
+  $("nt-memo").onchange = e => save(g => { g.t = e.target.value; });
+}
 function closeSheet(){ $("sheet").hidden = true; $("scrim").hidden = true; openNo = null; }
 $("scrim").onclick = closeSheet;
-document.addEventListener("keydown", e => { if (e.key==="Escape" && openNo!==null) closeSheet(); });
+document.addEventListener("keydown", e => {
+  const typing = e.target.closest?.("input, textarea, select, [contenteditable]");
+  if (e.key==="Escape" && openNo!==null){ closeSheet(); return; }
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (openNo !== null && (e.key === "ArrowLeft" || e.key === "ArrowRight")){ e.preventDefault(); sheetStep(e.key === "ArrowLeft" ? -1 : 1); return; }
+  if (e.key === "/" && openNo === null){
+    const id = view === "list" ? "q" : view === "team" ? "ts-q" : view === "mem" ? "mq" : null;
+    if (id && $(id)){ e.preventDefault(); $(id).focus(); }
+  }
+});
 
 /* ---------- events ---------- */
 $("tbody").addEventListener("click", async e => {
@@ -2348,9 +2529,10 @@ $("tbody").addEventListener("click", async e => {
     e.stopPropagation();
     if (!canWrite) return;
     const val = act==="own" ? !c.own : e.target.checked;
-    try { await patchChar(c, {[act]: val}); } catch(err){ writeError(err); if (act==="made") e.target.checked = !val; }
+    try { await patchChar(c, {[act]: val}, act === "own" ? `${c.nm}を${val ? "所持" : "未所持"}にしました` : undefined); } catch(err){ writeError(err); if (act==="made") e.target.checked = !val; }
     return;
   }
+  if (selMode){ toggleSel(c.n); return; }
   openSheet(c.n);
 });
 $("thead").addEventListener("click", e => {
@@ -2361,18 +2543,47 @@ $("thead").addEventListener("click", e => {
 });
 let qt; $("q").addEventListener("input", e => { clearTimeout(qt); qt = setTimeout(()=>{ F.q = e.target.value.trim(); limit=400; render(); }, 120); });
 let qat; $("qa").addEventListener("input", e => { clearTimeout(qat); qat = setTimeout(()=>{ F.qa = e.target.value.trim().toLowerCase(); limit=400; render(); }, 200); });
-for (const [id,key] of [["f-year","year"],["f-src","src"],["f-like","like"],["f-own","own"],["f-made","made"],["f-grade","grade"]])
+for (const [id,key] of [["f-year","year"],["f-src","src"],["f-like","like"],["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"]])
   $(id).addEventListener("change", e => { F[key] = e.target.value; limit=400; render(); });
 document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
   mode = b.dataset.mode; document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x===b)); savePrefs(); render();
 });
 $("reset").onclick = () => {
   F.q=""; $("q").value=""; F.qa=""; $("qa").value=""; F.attr.clear(); F.nat.clear(); F.rar.clear(); F.tp.clear();
-  for (const k of ["year","src","like","own","made","grade"]) F[k]="";
-  ["f-own","f-made","f-grade"].forEach(id=>$(id).value="");
+  for (const k of ["year","src","like","own","made","grade","grow","nw"]) F[k]="";
+  ["f-own","f-made","f-grade","f-grow","f-nw"].forEach(id=>$(id).value="");
+  $("fp-sel").value = ""; $("fp-del").disabled = true;
   limit=400; buildFilters(); render();
 };
 $("dv-check").onclick = () => checkRemote(true);
+function renderFps(){
+  const l = U.fps || []; const cur = $("fp-sel").value;
+  $("fp-sel").innerHTML = `<option value="">${l.length ? "選ぶ…" : "（まだありません）"}</option>` + l.map((z, i) => `<option value="${i}"${String(i) === cur ? " selected" : ""}>${esc(z.name)}</option>`).join("");
+  $("fp-del").disabled = $("fp-sel").value === "";
+}
+$("fp-sel").onchange = e => {
+  const z = (U.fps || [])[Number(e.target.value)]; $("fp-del").disabled = !z; if (!z) return;
+  for (const k of FP_STR) F[k] = z.f[k] || "";
+  for (const k of FP_SET){ F[k].clear(); for (const v of z.f[k]) F[k].add(v); }
+  $("q").value = F.q; $("qa").value = F.qa;
+  for (const [id, k] of [["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"]]) $(id).value = F[k];
+  sortKey = z.sk; sortDir = z.sd; savePrefs(); limit = 400; buildFilters(); render();
+  toast(`「${z.name}」の条件にしました`);
+};
+$("fp-save").onclick = () => { $("fp-box").hidden = false; $("fp-name").value = ""; $("fp-name").focus(); };
+$("fp-cancel").onclick = () => { $("fp-box").hidden = true; };
+$("fp-ok").onclick = async () => {
+  const name = $("fp-name").value.trim(); if (!name) { $("fp-name").focus(); return; }
+  const f = {}; for (const k of FP_STR) f[k] = F[k]; for (const k of FP_SET) f[k] = [...F[k]];
+  await mutate(() => { U.fps = (U.fps || []).filter(z => z.name !== name); U.fps.push({name, f, sk: sortKey, sd: sortDir}); U.fps = sanitizeFps(U.fps); });
+  $("fp-box").hidden = true; renderFps(); $("fp-sel").value = String((U.fps || []).findIndex(z => z.name === name)); $("fp-del").disabled = false;
+  toast("条件を保存しました");
+};
+$("fp-del").onclick = async () => {
+  const i = Number($("fp-sel").value); const z = (U.fps || [])[i]; if (!z) return;
+  await mutate(() => { U.fps = (U.fps || []).slice(); U.fps.splice(i, 1); }, `「${z.name}」を削除しました`);
+  $("fp-sel").value = ""; renderFps();
+};
 $("wl-x").onclick = () => { $("welcome").hidden = true; try { localStorage.setItem("galanthus-welcome","x"); } catch(e){} };
 $("wl-go").onclick = () => { setView("add"); setTimeout(()=>$("backup").scrollIntoView({behavior:"smooth", block:"start"}), 50); };
 $("btn-more").onclick = () => { limit += 600; render(); };
@@ -2394,7 +2605,11 @@ function showPanels(hasData){
   $("status").hidden = hasData || (view==="add" && db && canWrite);
 }
 
-let tt; function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, 2600); }
+let tt; function toast(msg, btn, fn){
+  const t=$("toast"); t.textContent=msg;
+  if (btn && fn){ const b = document.createElement("button"); b.type = "button"; b.textContent = btn; b.onclick = () => { t.hidden = true; fn(); }; t.appendChild(b); }
+  t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, btn ? 6000 : 2600);
+}
 
 /* ---------- CSV ---------- */
 function downloadBlob(filename, blob){
@@ -2414,6 +2629,7 @@ loadPrefs();
 document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x.dataset.mode===mode));
 const origRebuild = rebuild;
 function onData(){
+  if (typeof renderFps === "function") renderFps();
   origRebuild();
   if (!chars.length){
     $("status").innerHTML = `<h2>まだキャラが登録されていません</h2><div>「追加」タブから1体ずつ、またはスプレッドシートの行を貼り付けて登録できます。</div>`;
@@ -2438,14 +2654,14 @@ $("bk-export").onclick = async () => {
   // 自分の記録だけを書き出す（マスターの値は含めないので、後でマスターが直っても古い値で上書きしない）
   const data = {app:"galanthus", v:2, rev:DATA_REV, exportedAt:new Date().toISOString(),
     own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number), del: Object.keys(U.del).map(Number),
-    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [], sets: U.sets || [],
+    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [], sets: U.sets || [], notes: U.notes || {}, fps: U.fps || [],
     ov: U.ov, extra: U.extra, icons};
   downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
   $("bk-msg").textContent = `書き出しました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(icons).length}枚）。`;
 };
 function parseBackup(data){
   if (!data || typeof data !== "object" || data.app !== "galanthus") throw new Error("not galanthus");
-  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: migrateRS(sanitizeTeams(data.teams), data.rs), sets: sanitizeSets(data.sets)};
+  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: migrateRS(sanitizeTeams(data.teams), data.rs), sets: sanitizeSets(data.sets), notes: sanitizeNotes(data.notes), fps: sanitizeFps(data.fps)};
   if (data.ov || data.extra){ const x = sanitizeU(data); nu.ov = x.ov; nu.extra = x.extra; }
   else if (Array.isArray(data.chars)){
     // 古い形式（全キャラ入り）：マスターで空欄の項目だけ補い、マスターの値は上書きしない
@@ -2505,6 +2721,25 @@ function applyMaster(m, from){
   DATA_REV = m.cj.rev; DATA_FROM = from;
   $("dataver").textContent = `キャラデータ：${m.cj.updated || ""}時点・${m.cj.chars.length}体（${from}）`;
 }
+async function trackNew(){
+  const cur = [...MASTER.keys()], now = Date.now();
+  let k = null; try { k = await idb.get("kv", "known"); } catch(e){}
+  if (!k || !Array.isArray(k.list)){ NEWSET = new Set(); try { await idb.put("kv", "known", {list: cur, nw: [], at: now}); } catch(e){} return []; }
+  const prev = new Set(k.list.filter(n => isNo(n)));
+  const fresh = cur.filter(n => !prev.has(n));
+  const old = Array.isArray(k.nw) ? k.nw.filter(x => x && isNo(x.n) && Number.isFinite(x.at) && now - x.at < 14 * 864e5 && MASTER.has(x.n)) : [];
+  const nw = old.concat(fresh.map(n => ({n, at: now})));
+  NEWSET = new Set(nw.map(x => x.n));
+  if (fresh.length || old.length !== (k.nw || []).length){ try { await idb.put("kv", "known", {list: [...new Set([...prev, ...cur])], nw, at: now}); } catch(e){} }
+  return fresh;
+}
+function showNewInfo(){
+  const el = $("dv-new"); if (el) el.remove();
+  if (!NEWSET.size) return;
+  const b = document.createElement("button"); b.type = "button"; b.className = "ghost dv-new"; b.id = "dv-new"; b.textContent = `新キャラ${NEWSET.size}体を見る`;
+  b.onclick = () => { F.nw = "1"; $("f-nw").value = "1"; setView("list"); };
+  $("dataver").after(b);
+}
 const getJSON = url => fetch(url, {cache:"no-store"}).then(r => { if (!r.ok) throw new Error("http " + r.status); return r.json(); });
 let checking = false;
 async function checkRemote(manual){
@@ -2531,6 +2766,7 @@ async function checkRemote(manual){
     applyMaster(m, "GitHubから取得");                      // 画面に反映し
     await idb.put("kv", "remoteData", {chars: m.cj, details: m.dj, memories: {list: m.mem}, stages: {list: m.st}}).catch(()=>{});   // 問題がなければ保存
     await reconcileExtras();
+    await trackNew(); showNewInfo();
     onData();
     const added = m.cj.chars.length - before;
     toast(added > 0 ? `キャラデータを更新しました（新キャラ${added}体）` : "キャラデータを最新版に更新しました");
@@ -2554,6 +2790,7 @@ async function checkRemote(manual){
   if (remote && (!BUNDLED || remote.cj.rev > BUNDLED.cj.rev)) applyMaster(remote, "GitHubから取得");
   else if (BUNDLED) applyMaster(BUNDLED, "アプリ同梱");
   U = sanitizeU(saved);
+  await trackNew().catch(()=>{}); showNewInfo();
   await reloadIcons();
   setTimeout(() => checkRemote(false), 800);
   if (!MASTER.size){
