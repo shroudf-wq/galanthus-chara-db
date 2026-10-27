@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-pIxPwAikViWApta5jolm228etaz/KLfERpkDXQRyUt4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-uuOWTIoG6N7ivw15IEa2tmWPndcB+pZPyQK4hsD95Vc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -282,6 +282,22 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
 .sl-txt b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-txt small{font-size:11px;color:var(--muted)}
 .sl-x{position:absolute;top:2px;right:4px;font-size:16px;padding:0 4px}
+.sl-sw{position:absolute;bottom:2px;right:4px;font-size:13px;padding:0 4px;line-height:1.4;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--muted);cursor:pointer}
+.slot.tgt{outline:2px solid var(--accent);outline-offset:1px;background:var(--accent-soft)}
+.slot.dragover{outline:2px dashed var(--accent)}
+.tm-tgt{margin:6px 0 0;font-size:12.5px;color:var(--accent);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.set-box{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px}
+.set-box h2{margin:0 0 8px;font-size:16px}
+.set-parts{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.set-parts li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}
+.set-parts li > b{font-size:12px;color:var(--muted);min-width:2.4em}
+.set-parts select{min-width:0;width:100%;padding:4px 6px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg);color:inherit}
+.set-parts small{grid-column:2/4;color:var(--muted);font-size:11.5px;overflow-wrap:anywhere}
+.set-parts li.cur select{border-color:var(--accent)}
+.set-box label.sel{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.set-box label.sel select{flex:1 1 auto;min-width:0;width:100%}
+.slot[draggable]{padding-right:24px}
+.st-cand-opts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;margin:6px 0}
 .tm-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
 .tm-meta .attr{width:auto}
 .st-box{display:flex;flex-direction:column;gap:8px}
@@ -479,15 +495,28 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
   <section id="view-team" hidden>
     <div class="team-grid">
       <div class="panel tm-left">
+        <section class="set-box" aria-labelledby="set-h">
+          <h2 id="set-h">出撃セット（最大4パーティ）</h2>
+          <div class="tm-head">
+            <select id="set-sel" aria-label="出撃セットを選ぶ"></select>
+            <button class="ghost" type="button" id="set-new">新規</button>
+            <button class="ghost" type="button" id="set-rename">名前</button>
+            <button class="ghost" type="button" id="set-del">削除</button>
+          </div>
+          <div class="tm-namebox" id="set-namebox" hidden><input id="set-name" maxlength="40" aria-label="出撃セットの名前"><button class="primary" type="button" id="set-nameok">保存</button><button class="ghost" type="button" id="set-namecancel">やめる</button></div>
+          <div id="set-body"></div>
+        </section>
         <div class="tm-head">
           <select id="tm-sel" aria-label="編成を選ぶ"></select>
           <button class="ghost" type="button" id="tm-new">新規</button>
+          <button class="ghost" type="button" id="tm-dup">複製</button>
           <button class="ghost" type="button" id="tm-rename">名前</button>
           <button class="ghost" type="button" id="tm-clear">空にする</button>
           <button class="ghost" type="button" id="tm-del">削除</button>
         </div>
         <div class="tm-namebox" id="tm-namebox" hidden><input id="tm-name" maxlength="40" aria-label="編成の名前"><button class="primary" type="button" id="tm-nameok">保存</button><button class="ghost" type="button" id="tm-namecancel">やめる</button></div>
         <div class="tm-slots" id="tm-slots"></div>
+        <div class="tm-tgt" id="tm-tgt" hidden></div>
         <div class="tm-rs" id="tm-rs" hidden></div>
         <p class="note" style="margin:6px 0 0">フラワーメモリーは各キャラの下で1つずつ付けられます。</p>
         <div class="tm-meta" id="tm-meta"></div>
@@ -788,9 +817,9 @@ function migrateRS(teamsArr, old){
   }
   for (let i = 0; i < left.length && teamsArr.length < 50; i += 5){
     const part = left.slice(i, i + 5);
-    teamsArr.push({name: "百花錬成の引き継ぎ" + (i ? i / 5 + 1 : ""), m: [0,1,2,3,4].map(j => part[j] ? part[j][0] : null), mems: [null, null, null, null, null], rs: [0,1,2,3,4].map(j => part[j] ? part[j][1] : []), st: null});
+    teamsArr.push({id: null, name: "百花錬成の引き継ぎ" + (i ? i / 5 + 1 : ""), m: [0,1,2,3,4].map(j => part[j] ? part[j][0] : null), mems: [null, null, null, null, null], rs: [0,1,2,3,4].map(j => part[j] ? part[j][1] : []), st: null});
   }
-  return teamsArr;
+  return ensureTeamIds(teamsArr);
 }
 function sanitizeU(x){
   const u = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}};
@@ -798,6 +827,7 @@ function sanitizeU(x){
   u.own = noMap(x.own); u.made = noMap(x.made); u.del = noMap(x.del);
   u.mown = noMap(x.mown); u.mmax = noMap(x.mmax);
   u.teams = migrateRS(sanitizeTeams(x.teams), x.rs);
+  u.sets = sanitizeSets(x.sets);
   if (x.ov && typeof x.ov === "object" && !Array.isArray(x.ov))
     for (const [k, v] of Object.entries(x.ov)){ const n = vNum(k), o = sanitizeChar(v, true); if (isNo(n) && o && Object.keys(o).length) u.ov[n] = o; }
   if (x.extra && typeof x.extra === "object" && !Array.isArray(x.extra))
@@ -807,7 +837,7 @@ function sanitizeU(x){
 
 /* ---------- data（マスターはJSON、自分の記録はIndexedDB） ---------- */
 let MASTER = new Map();
-let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[]};
+let U = {own:{}, made:{}, ov:{}, extra:{}, del:{}, mown:{}, mmax:{}, teams:[], sets:[]};
 const iconURL = {};
 const USER_FIELDS = ["own","made","ic"];
 const idb = (() => {
@@ -1239,9 +1269,32 @@ function memEffects(m){
 }
 function fmtVal(v, unit){ return v == null ? "" : (Math.round(v * 100) / 100) + unit; }
 function emptyTeam(name){ return {name: name || "編成1", m: [null, null, null, null, null], mems: [null, null, null, null, null], rs: [[], [], [], [], []]}; }
+function ensureTeamIds(arr){
+  let mx = 0; for (const t of arr) if (isNo(t.id)) mx = Math.max(mx, t.id);
+  const seen = new Set();
+  for (const t of arr){ if (!isNo(t.id) || seen.has(t.id)) t.id = ++mx; seen.add(t.id); }
+  return arr;
+}
 function sanitizeTeams(x){
   if (!Array.isArray(x)) return [];
+  return ensureTeamIds(sanitizeTeamsRaw(x));
+}
+function sanitizeSets(x){
+  if (!Array.isArray(x)) return [];
+  const out = []; let mx = 0; const seen = new Set();
+  for (const z of x.slice(0, 30)){
+    if (!z || typeof z !== "object") continue;
+    let id = vNum(z.id); if (!isNo(id) || seen.has(id)) id = null;
+    const o = {id, name: vStr(z.name, 40) || "出撃セット", parts: Array.from({length: 4}, (_, i) => { const n = vNum(Array.isArray(z.parts) ? z.parts[i] : null); return isNo(n) ? n : null; }), st: isNo(vNum(z.st)) ? vNum(z.st) : null};
+    if (id){ seen.add(id); mx = Math.max(mx, id); }
+    out.push(o);
+  }
+  for (const o of out) if (!o.id){ o.id = ++mx; }
+  return out;
+}
+function sanitizeTeamsRaw(x){
   return x.slice(0, 50).filter(t => t && typeof t === "object").map(t => ({
+    id: isNo(vNum(t.id)) ? vNum(t.id) : null,
     name: vStr(t.name, 40) || "編成",
     m: Array.from({length: 5}, (_, i) => { const n = vNum(Array.isArray(t.m) ? t.m[i] : null); return isNo(n) ? n : null; }),
     // 以前の形式（編成に1つだけ）は先頭のキャラに付け替える
@@ -1253,7 +1306,10 @@ function sanitizeTeams(x){
     st: isNo(vNum(t.st)) ? vNum(t.st) : null,
   }));
 }
-let teamIdx = 0, rsOpen = null;
+let teamIdx = 0, rsOpen = null, tgtSlot = null, dragFrom = null;
+function swapSlots(t, a, b){
+  for (const k of ["m", "mems", "rs"]){ if (!Array.isArray(t[k])) continue; const x = t[k][a]; t[k][a] = t[k][b]; t[k][b] = x; }
+}
 try { teamIdx = Math.max(0, Number(localStorage.getItem("galanthus-team")) || 0); } catch(e){}
 function teams(){ return U.teams && U.teams.length ? U.teams : [emptyTeam()]; }
 function curTeam(){ const t = teams(); if (teamIdx >= t.length) teamIdx = 0; return t[teamIdx]; }
@@ -1262,7 +1318,15 @@ async function saveTeam(fn){
   try { localStorage.setItem("galanthus-team", teamIdx); } catch(e){}
 }
 async function addToTeam(n){
-  const t = curTeam(); if (t.m.includes(n)){ toast("すでに編成に入っています"); return; }
+  const t = curTeam();
+  if (tgtSlot != null && tgtSlot < 5){
+    const i = tgtSlot, cur = t.m.indexOf(n); tgtSlot = null;
+    if (cur === i){ toast("すでにその枠に入っています"); renderTeam(); return; }
+    if (cur >= 0){ await saveTeam(tt => swapSlots(tt, cur, i)); toast("枠を入れ替えました"); return; }
+    const had = t.m[i] != null;
+    await saveTeam(tt => { tt.m[i] = n; tt.rs[i] = []; }); toast(had ? `${i + 1}番目のキャラを入れ替えました` : `${i + 1}番目の枠に入れました`); return;
+  }
+  if (t.m.includes(n)){ toast("すでに編成に入っています"); return; }
   const i = t.m.indexOf(null); if (i < 0){ toast("5人埋まっています。先に誰かを外してください"); return; }
   await saveTeam(tt => { tt.m[i] = n; }); toast("編成に入れました");
 }
@@ -1385,20 +1449,110 @@ function suggestTeam(presetKey, opts){
 /* --- 画面 --- */
 const TF = {key: "atk", owned: true, wide: true, nocond: true, q: "", preset: "boss", sattr: "", sowned: true};
 function teamEffectOptions(){ return Object.entries(EFFECTS).sort((a, b) => CAT_ORDER.indexOf(a[1][1]) - CAT_ORDER.indexOf(b[1][1])).map(([k, v]) => `<option value="${k}"${k === TF.key ? " selected" : ""}>${esc(v[1])}：${esc(v[0])}</option>`).join(""); }
+/* --- 出撃セット（4パーティ） --- */
+let setIdx = 0;
+try { setIdx = Math.max(0, Number(localStorage.getItem("galanthus-set")) || 0); } catch(e){}
+function sets(){ return U.sets || []; }
+function stageOptions(sel){
+  const cats = [...new Set(STAGES.map(x => x.cat))];
+  return `<option value="">選ばない</option>` + cats.map(c => `<optgroup label="${esc(c)}">${STAGES.filter(x => x.cat === c).map(x => `<option value="${x.id}"${x.id === sel ? " selected" : ""}>${esc(x.nm)}</option>`).join("")}</optgroup>`).join("");
+}
+function renderSet(){
+  const S = sets();
+  if (setIdx >= S.length) setIdx = 0;
+  $("set-sel").innerHTML = S.length ? S.map((z, i) => `<option value="${i}"${i === setIdx ? " selected" : ""}>${esc(z.name)}</option>`).join("") : `<option value="">（まだありません）</option>`;
+  $("set-rename").disabled = $("set-del").disabled = !S.length;
+  if (!S.length){ $("set-body").innerHTML = `<p class="note">高難易度で複数のパーティを出すときに、編成を4つまでまとめて、キャラやメモリーの重なりと合計を確認できます。「新規」を押すと、今の編成をPT1にして作ります。</p>`; return; }
+  const z = S[setIdx], T = teams(), byId = new Map(T.filter(t => isNo(t.id)).map(t => [t.id, t]));
+  const stage = z.st != null ? STAGES.find(x => x.id === z.st) || null : null;
+  const cur = curTeam();
+  const parts = z.parts.map(id => id != null ? byId.get(id) || null : null);
+  const sums = parts.map(t => t ? teamSummary(t) : null);
+  const opts = sel => `<option value="">編成なし</option>` + T.filter(t => isNo(t.id)).map(t => `<option value="${t.id}"${t.id === sel ? " selected" : ""}>${esc(t.name)}</option>`).join("");
+  const li = parts.map((t, i) => {
+    const sm = sums[i];
+    const names = sm ? sm.members.map((c, j) => c ? c.nm + (sm.mems[j] ? "＋" + sm.mems[j].nm : "") : null).filter(Boolean).join("、") : "";
+    return `<li class="${t && cur && t.id === cur.id ? "cur" : ""}"><b>PT${i + 1}</b><select data-pi="${i}" aria-label="PT${i + 1}の編成">${opts(t ? t.id : null)}</select><button class="ghost" type="button" data-po="${i}"${t ? "" : " disabled"}>編集</button>${t ? `<small>${esc(names || "（キャラなし）")}</small>` : ""}</li>`;
+  }).join("");
+  // 重なりのチェック
+  const warn = [];
+  const ids = z.parts.filter(id => id != null && byId.has(id)); const dupT = ids.filter((x, i) => ids.indexOf(x) !== i);
+  if (dupT.length) warn.push("同じ編成を2回以上選んでいます。");
+  const who = new Map(), memCnt = new Map(); let empty = 0, notOwn = 0, total = 0;
+  sums.forEach((sm, i) => { if (!sm) return;
+    total += sm.totalStat;
+    sm.members.forEach((c, j) => {
+      if (!c){ empty++; return; }
+      if (!c.own) notOwn++;
+      const b = BASE(c.nm); if (!who.has(b)) who.set(b, new Set()); who.get(b).add(i + 1);
+      const m = sm.mems[j]; if (m) memCnt.set(m.nm, (memCnt.get(m.nm) || 0) + 1);
+    });
+  });
+  const dupC = [...who].filter(([, v]) => v.size > 1).map(([b, v]) => `${b}（PT${[...v].join("・PT")}）`);
+  if (dupC.length) warn.push(`同じキャラ（別衣装を含む）が複数のパーティにいます：${dupC.join("、")}`);
+  const dupM = [...memCnt].filter(([, n]) => n > 1).map(([nm, n]) => `${nm}×${n}`);
+  if (dupM.length) warn.push(`同じメモリーを複数使っています：${dupM.join("、")}。持っている枚数を確認してください。`);
+  if (notOwn) warn.push(`未所持のキャラが${notOwn}人入っています。`);
+  if (stage && stage.tags.includes("weak") && stage.wk.length){
+    const low = sums.map((sm, i) => sm && sm.members.some(Boolean) && sm.members.filter(c => c && stage.wk.includes(c.a)).length < 3 ? "PT" + (i + 1) : null).filter(Boolean);
+    if (low.length) warn.push(`弱点以外を軽減する敵がいます。弱点属性（${stage.wk.join("・")}）が3人未満のパーティ：${low.join("・")}`);
+  }
+  const used = sums.filter(Boolean).length;
+  const meta = `<span>パーティ：<b>${used}</b>／4</span><span title="キャラの基本ステータス（HP＋攻撃力＋防御力）の合計です。ゲーム内の総合力はレベルや装備で変わるので目安です。">ステータス合計（目安）：<b class="num">${total.toLocaleString()}</b></span>`
+    + (stage && stage.rec ? `<span>推奨総合力：<b class="num">${stage.rec.toLocaleString()}</b></span>` : "") + (empty && used ? `<span>空き枠：${empty}</span>` : "");
+  $("set-body").innerHTML = `<label class="sel" style="margin-top:8px">ステージ <select id="set-st" aria-label="出撃セットのステージ">${stageOptions(z.st)}</select></label>
+    <ol class="set-parts">${li}</ol><div class="tm-meta">${meta}</div>${warn.length ? `<ul class="tm-warn">${warn.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}`;
+}
+async function saveSet(fn){
+  await mutate(() => { U.sets = sets().slice(); if (setIdx >= U.sets.length) return; fn(U.sets[setIdx]); U.sets = sanitizeSets(U.sets); });
+}
+function initSetUI(){
+  $("set-sel").onchange = e => { setIdx = Number(e.target.value) || 0; try { localStorage.setItem("galanthus-set", setIdx); } catch(err){} renderSet(); };
+  $("set-new").onclick = async () => {
+    await mutate(() => {
+      if (!U.teams || !U.teams.length){ U.teams = sanitizeTeams([emptyTeam()]); teamIdx = 0; }
+      const t = U.teams[Math.min(teamIdx, U.teams.length - 1)];
+      U.sets = sets().slice(); U.sets.push({id: null, name: "出撃セット" + (U.sets.length + 1), parts: [t.id, null, null, null], st: t.st ?? null});
+      U.sets = sanitizeSets(U.sets); setIdx = U.sets.length - 1;
+    });
+    try { localStorage.setItem("galanthus-set", setIdx); } catch(err){}
+    toast("出撃セットを作りました");
+  };
+  $("set-rename").onclick = () => { if (!sets().length) return; $("set-namebox").hidden = false; $("set-name").value = sets()[setIdx].name; $("set-name").focus(); };
+  $("set-nameok").onclick = async () => { const v = $("set-name").value.trim(); if (v) await saveSet(z => { z.name = v; }); $("set-namebox").hidden = true; };
+  $("set-namecancel").onclick = () => { $("set-namebox").hidden = true; };
+  $("set-del").onclick = async () => { if (!sets().length) return; await mutate(() => { U.sets = sets().slice(); U.sets.splice(setIdx, 1); setIdx = Math.max(0, setIdx - 1); }); toast("出撃セットを削除しました（中の編成は残っています）"); };
+  $("set-body").onchange = async e => {
+    if (e.target.id === "set-st"){ const id = vNum(e.target.value); await saveSet(z => { z.st = isNo(id) ? id : null; }); return; }
+    const i = Number(e.target.dataset.pi); if (!(i >= 0 && i < 4)) return;
+    const id = vNum(e.target.value); await saveSet(z => { z.parts[i] = isNo(id) ? id : null; });
+  };
+  $("set-body").onclick = e => {
+    const i = Number(e.target.dataset.po); if (!(i >= 0 && i < 4)) return;
+    const id = sets()[setIdx]?.parts[i]; const k = teams().findIndex(t => t.id === id); if (k < 0) return;
+    teamIdx = k; rsOpen = null; tgtSlot = null; try { localStorage.setItem("galanthus-team", teamIdx); } catch(err){}
+    renderTeam(); $("tm-sel").scrollIntoView({block: "nearest", behavior: "smooth"});
+  };
+}
 function renderTeam(){
+  renderSet();
   const t = curTeam(); const s = teamSummary(t);
   $("tm-sel").innerHTML = teams().map((x, i) => `<option value="${i}"${i === teamIdx ? " selected" : ""}>${esc(x.name)}</option>`).join("");
   const memOpts = memOptionsHTML();
   $("tm-slots").innerHTML = s.members.map((c, i) => c
-    ? `<div class="slot-col"><div class="slot" data-i="${i}">${iconHTML(c)}<div class="sl-txt"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(c.tp || "")} ${c.own ? "" : "・未所持"}</small></div><button class="x sl-x" type="button" data-rm="${i}" aria-label="外す">×</button></div>`
+    ? `<div class="slot-col" data-col="${i}"><div class="slot${tgtSlot === i ? " tgt" : ""}" data-i="${i}" draggable="true">${iconHTML(c)}<div class="sl-txt"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(c.tp || "")} ${c.own ? "" : "・未所持"}</small></div><button class="x sl-x" type="button" data-rm="${i}" aria-label="外す">×</button><button class="sl-sw" type="button" data-sw="${i}" title="入れ替え" aria-label="${i + 1}番目の枠を選んで入れ替える" aria-pressed="${tgtSlot === i}">⇄</button></div>`
       + `<select class="sl-mem${s.mems[i] ? " on" : ""}" data-mi="${i}" aria-label="${esc(c.nm)}のメモリー">${memOpts.replace(`value="${s.mems[i] ? s.mems[i].id : ""}"`, `value="${s.mems[i] ? s.mems[i].id : ""}" selected`)}</select>`
       + `<button class="ghost rs-btn${(t.rs?.[i] || []).some(e => e.id) ? " on" : ""}${rsOpen === i ? " open" : ""}" type="button" data-rse="${i}" aria-expanded="${rsOpen === i}">百花錬成${(t.rs?.[i] || []).filter(e => e.id).length ? "（" + t.rs[i].filter(e => e.id).length + "）" : ""}</button></div>`
-    : `<div class="slot-col"><div class="slot empty" data-i="${i}">空き</div></div>`).join("");
+    : `<div class="slot-col" data-col="${i}"><div class="slot empty${tgtSlot === i ? " tgt" : ""}" data-i="${i}" role="button" tabindex="0" aria-pressed="${tgtSlot === i}">${tgtSlot === i ? "ここに入れる" : "空き"}</div></div>`).join("");
+  if (tgtSlot != null && tgtSlot >= 5) tgtSlot = null;
+  $("tm-tgt").hidden = tgtSlot == null;
+  if (tgtSlot != null) $("tm-tgt").innerHTML = `<span>${tgtSlot + 1}番目の枠を選択中：「入れる」を押すとこの枠に入ります（入っているキャラとは入れ替え）。別の枠の ⇄ を押すと位置を入れ替えます。</span><button class="ghost" type="button" id="tm-tgt-x">選択をやめる</button>`;
   if (rsOpen != null && !s.members[rsOpen]) rsOpen = null;
   const rsBox = $("tm-rs"); rsBox.hidden = rsOpen == null;
   if (rsOpen != null){
     const i = rsOpen, c = s.members[i];
-    renderRSEditor(rsBox, t.rs?.[i] || [], `${c.nm}の専用装備：百花錬成`, async fn => { await saveTeam(tt => { const cur = (tt.rs[i] || []).map(e => ({...e})); fn(cur); tt.rs[i] = cur; }); });
+    const srcs = []; teams().forEach((x, j) => { if (j === teamIdx) return; const k = x.m.indexOf(c.n); const l = k >= 0 && x.rs ? (x.rs[k] || []).filter(e => e.id) : []; if (l.length) srcs.push({label: x.name, list: l}); });
+    renderRSEditor(rsBox, t.rs?.[i] || [], `${c.nm}の専用装備：百花錬成`, async fn => { await saveTeam(tt => { const cur = (tt.rs[i] || []).map(e => ({...e})); fn(cur); tt.rs[i] = cur; }); }, srcs);
   }
   const attrTxt = Object.entries(s.attrs).map(([a, n]) => `<span class="attr ${esc(a)}">${esc(a)}</span>×${n}`).join("　") || "—";
   const typeTxt = Object.entries(s.types).map(([a, n]) => `${esc(a)}×${n}`).join("　") || "—";
@@ -1453,12 +1607,33 @@ function initTeamUI(){
   $("ts-list").onclick = e => { const n = Number(e.target.dataset.add); if (isNo(n)) addToTeam(n); else { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); } };
   $("tm-slots").onclick = async e => {
     if (e.target.dataset.rm != null){ const i = Number(e.target.dataset.rm); await saveTeam(t => { t.m[i] = null; t.mems[i] = null; t.rs[i] = []; }); if (rsOpen === i) rsOpen = null; return; }
+    if (e.target.id === "tm-tgt-x"){ tgtSlot = null; renderTeam(); return; }
+    if (e.target.dataset.sw != null){
+      const i = Number(e.target.dataset.sw);
+      if (tgtSlot == null || tgtSlot === i){ tgtSlot = tgtSlot === i ? null : i; renderTeam(); return; }
+      const a = tgtSlot; tgtSlot = null; await saveTeam(t => swapSlots(t, a, i)); toast("枠を入れ替えました"); return;
+    }
     if (e.target.dataset.rse != null){ const i = Number(e.target.dataset.rse); rsOpen = rsOpen === i ? null : i; renderTeam(); return; }
     if (e.target.closest("select")) return;
     const sl = e.target.closest(".slot[data-i]"); if (!sl) return;
-    const n = curTeam().m[Number(sl.dataset.i)]; if (n != null) openSheet(n); else $("ts-q").focus();
+    const si = Number(sl.dataset.i), n = curTeam().m[si];
+    if (n != null){ if (tgtSlot != null && tgtSlot !== si){ const a = tgtSlot; tgtSlot = null; await saveTeam(t => swapSlots(t, a, si)); toast("枠を入れ替えました"); return; } openSheet(n); return; }
+    if (tgtSlot != null && tgtSlot !== si && curTeam().m[tgtSlot] != null){ const a = tgtSlot; tgtSlot = null; await saveTeam(t => swapSlots(t, a, si)); toast("空いている枠へ移しました"); return; }
+    tgtSlot = tgtSlot === si ? null : si; renderTeam(); if (tgtSlot != null) $("ts-q").focus({preventScroll: true});
   };
-  $("tm-sel").onchange = e => { rsOpen = null; teamIdx = Number(e.target.value) || 0; try { localStorage.setItem("galanthus-team", teamIdx); } catch(err){} renderTeam(); };
+  $("tm-tgt").onclick = e => { if (e.target.id === "tm-tgt-x"){ tgtSlot = null; renderTeam(); } };
+  $("tm-slots").onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches(".slot.empty")){ e.preventDefault(); e.target.click(); } };
+  $("tm-slots").addEventListener("dragstart", e => { const sl = e.target.closest?.(".slot[data-i]"); if (!sl) return; dragFrom = Number(sl.dataset.i); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", String(dragFrom)); } catch(err){} });
+  $("tm-slots").addEventListener("dragover", e => { const col = e.target.closest?.("[data-col]"); if (col && dragFrom != null){ e.preventDefault(); col.querySelector(".slot")?.classList.add("dragover"); } });
+  $("tm-slots").addEventListener("dragleave", e => { const col = e.target.closest?.("[data-col]"); if (col) col.querySelector(".slot")?.classList.remove("dragover"); });
+  $("tm-slots").addEventListener("drop", async e => { const col = e.target.closest?.("[data-col]"); if (!col || dragFrom == null) return; e.preventDefault(); const a = dragFrom, b = Number(col.dataset.col); dragFrom = null; if (a !== b){ tgtSlot = null; await saveTeam(t => swapSlots(t, a, b)); } else renderTeam(); });
+  $("tm-slots").addEventListener("dragend", () => { dragFrom = null; $("tm-slots").querySelectorAll(".dragover").forEach(x => x.classList.remove("dragover")); });
+  $("tm-dup").onclick = async () => {
+    const src = curTeam();
+    await mutate(() => { U.teams = teams().slice(); const c = JSON.parse(JSON.stringify(src)); c.id = null; c.name = (src.name + "のコピー").slice(0, 40); U.teams.splice(teamIdx + 1, 0, c); teamIdx = teamIdx + 1; U.teams = sanitizeTeams(U.teams); });
+    toast("編成を複製しました");
+  };
+  $("tm-sel").onchange = e => { rsOpen = null; tgtSlot = null; teamIdx = Number(e.target.value) || 0; try { localStorage.setItem("galanthus-team", teamIdx); } catch(err){} renderTeam(); };
   $("tm-new").onclick = async () => { await mutate(() => { U.teams = teams().slice(); U.teams.push(emptyTeam("編成" + (U.teams.length + 1))); teamIdx = U.teams.length - 1; U.teams = sanitizeTeams(U.teams); }); };
   $("tm-rename").onclick = () => {
     const box = $("tm-namebox"); box.hidden = false; $("tm-name").value = curTeam().name; $("tm-name").focus();
@@ -1523,7 +1698,31 @@ function renderStage(){
   const en = cur.en.map(e => `<li><details><summary><b>${esc(e.n)}</b> ${e.a === "?" ? "" : `<span class="attr ${esc(e.a)}">${esc(e.a)}</span>`}</summary>${e.t ? `<p class="ab">${esc(e.t)}</p>` : `<p class="ab">（アビリティの記載なし）</p>`}</details></li>`).join("");
   $("st-info").innerHTML = `<div class="st-meta"><span>推奨総合力：<b class="num">${cur.rec ? cur.rec.toLocaleString() : "—"}</b></span><span>敵の弱点：${wk}</span>${cur.url ? `<a href="${esc(cur.url)}" target="_blank" rel="noopener noreferrer">wikiで攻略を見る</a>` : ""}</div>`
     + (tags ? `<div class="st-tags">${tags}</div><details class="tm-stage"><summary>注意点の説明</summary><ul class="tm-items">${hints}</ul></details>` : "")
-    + (en ? `<ul class="st-en">${en}</ul>` : `<p class="muted note">敵の一覧はwikiの表から読み取れませんでした。wikiのページを見てください。</p>`);
+    + (en ? `<ul class="st-en">${en}</ul>` : `<p class="muted note">敵の一覧はwikiの表から読み取れませんでした。wikiのページを見てください。</p>`)
+    + `<details id="st-cand-d"${stCand.open ? " open" : ""}><summary><b>このステージ向けの候補を探す</b></summary>
+       <div class="st-cand-opts"><label><input type="checkbox" class="mk" id="st-cand-own"${stCand.own ? " checked" : ""}> 所持のみ</label>${cur.wk.length ? `<label><input type="checkbox" class="mk" id="st-cand-wk"${stCand.wk ? " checked" : ""}> 弱点属性（${esc(cur.wk.join("・"))}）のみ</label>` : ""}</div>
+       <ul class="ts-list" id="st-cand"></ul><p class="note">ステージの注意点に合わせた重みで、1人ずつの効果の大きさを比べた順です。</p></details>`;
+  const d = $("st-cand-d");
+  d.ontoggle = () => { stCand.open = d.open; if (d.open) renderStageCand(cur); };
+  $("st-cand-own").onchange = e => { stCand.own = e.target.checked; renderStageCand(cur); };
+  if ($("st-cand-wk")) $("st-cand-wk").onchange = e => { stCand.wk = e.target.checked; renderStageCand(cur); };
+  if (stCand.open) renderStageCand(cur);
+}
+const stCand = {open: false, own: true, wk: true, key: "", list: []};
+function renderStageCand(stage){
+  const box = $("st-cand"); if (!box) return;
+  const wkOnly = stCand.wk && stage.wk.length;
+  const key = [stage.id, stCand.own, wkOnly, chars.length, Object.keys(U.own).length, DATA_REV].join("|");
+  if (stCand.key !== key){
+    const w = stageWeights(stage);
+    const pool = chars.filter(c => (!stCand.own || c.own) && (!wkOnly || stage.wk.includes(c.a)) && charEffects(c).length);
+    stCand.list = pool.map(c => ({c, s: scoreTeam({m: [c.n, null, null, null, null], mems: [], rs: []}, w)})).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 30)
+      .map(({c}) => { const effs = charEffects(c).filter(e => w[e.key] && e.scope !== "self").sort((a, b) => (w[b.key] || 0) - (w[a.key] || 0)); return {c, txt: [...new Set(effs.map(e => EFFECTS[e.key][0]))].slice(0, 4).join("・")}; });
+    stCand.key = key;
+  }
+  const inTeam = new Set(curTeam().m);
+  box.innerHTML = stCand.list.map(({c, txt}) => `<li data-n="${esc(c.n)}">${iconHTML(c)}<div class="ts-txt"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(txt)}</small></div><span></span><button class="ghost" type="button" data-add="${esc(c.n)}"${inTeam.has(c.n) ? " disabled" : ""}>${inTeam.has(c.n) ? "編成中" : "入れる"}</button></li>`).join("") || `<li class="muted">条件に合うキャラがいません。</li>`;
+  box.onclick = e => { const n = Number(e.target.dataset.add); if (isNo(n)) addToTeam(n); else { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); } };
 }
 function memOptionsHTML(){
   const own = MEM.filter(m => U.mown?.[m.id]); const rest = MEM.filter(m => !U.mown?.[m.id]);
@@ -1531,7 +1730,7 @@ function memOptionsHTML(){
   return `<option value="">メモリーなし</option>` + (own.length ? `<optgroup label="所持">${own.map(opt).join("")}</optgroup>` : "") + `<optgroup label="未所持">${rest.map(opt).join("")}</optgroup>`;
 }
 
-initTeamUI();
+initTeamUI(); initSetUI();
 /* ---------- フラワーメモリー ---------- */
 let MEM = [];
 const MF = {q:"", r:new Set(), own:"", src:"", lv:"max", sort:"id", dir:1};
@@ -1802,8 +2001,10 @@ const RS_GROUPS = ["攻撃","守護","回復","妨害","特殊"];
 function rsOptions(sel){
   return `<option value="">（選ぶ）</option>` + RS_GROUPS.map(g => `<optgroup label="${g}">${RS_LIST.filter(r => r.t[0] === g || (g === "攻撃" && r.t[0] === "支援")).map(r => `<option value="${r.id}"${r.id === sel ? " selected" : ""}>${esc(r.l)}</option>`).join("")}</optgroup>`).join("");
 }
-function renderRSEditor(box, l, title, saveFn){
+function renderRSEditor(box, l, title, saveFn, srcs){
+  srcs = srcs || [];
   box.innerHTML = `<h3>${esc(title)}</h3><p class="note">錬成で付いたアビリティを枠ごとに選び、数値を入れてください。この編成の効果集計に入ります。数値はwikiの幅の中に収めます。</p>`
+    + (srcs.length ? `<label class="sel" style="margin-top:4px">他の編成からコピー <select id="rs-copy"><option value="">選ぶ（今の記録は置き換わります）</option>${srcs.map((x, j) => `<option value="${j}">${esc(x.label)}（${x.list.length}枠）</option>`).join("")}</select></label>` : "")
     + l.map((e, i) => { const r = RS_BY.get(e.id);
         return `<div class="rs-row"><select data-rsi="${i}" aria-label="錬成${i + 1}枠目">${rsOptions(e.id)}</select>`
           + `<input type="number" step="any" inputmode="decimal" data-rsv="${i}" aria-label="錬成${i + 1}枠目の数値" value="${e.v ?? ""}" ${r && r.lo != null ? `min="${r.lo}" max="${r.hi}" placeholder="${r.lo}〜${r.hi}"` : "disabled placeholder=\"—\""}>`
@@ -1811,6 +2012,7 @@ function renderRSEditor(box, l, title, saveFn){
     + (l.length < RS_MAX ? `<div class="actions" style="margin-top:8px"><button class="ghost" type="button" id="rs-add">＋ 枠を追加</button></div>` : "");
   const save = saveFn;
   if ($("rs-add")) $("rs-add").onclick = () => save(l => { if (l.length < RS_MAX) l.push({id: "", v: null}); });
+  if ($("rs-copy")) $("rs-copy").onchange = e => { const x = srcs[Number(e.target.value)]; if (x) save(l => { l.splice(0, l.length, ...x.list.map(z => ({...z}))); }).then(() => toast("錬成をコピーしました")); };
   box.querySelectorAll("[data-rsx]").forEach(b => b.onclick = () => save(l => { l.splice(Number(b.dataset.rsx), 1); }));
   box.querySelectorAll("[data-rsi]").forEach(s => s.onchange = () => save(l => { const i = Number(s.dataset.rsi), r = RS_BY.get(s.value); l[i] = {id: r ? r.id : "", v: r && r.lo != null ? r.hi : null}; }));
   box.querySelectorAll("[data-rsv]").forEach(inp => inp.onchange = () => save(l => { const i = Number(inp.dataset.rsv); if (l[i]) l[i].v = rsVal(RS_BY.get(l[i].id), inp.value); }));
@@ -2236,14 +2438,14 @@ $("bk-export").onclick = async () => {
   // 自分の記録だけを書き出す（マスターの値は含めないので、後でマスターが直っても古い値で上書きしない）
   const data = {app:"galanthus", v:2, rev:DATA_REV, exportedAt:new Date().toISOString(),
     own: Object.keys(U.own).map(Number), made: Object.keys(U.made).map(Number), del: Object.keys(U.del).map(Number),
-    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [],
+    mown: Object.keys(U.mown||{}).map(Number), mmax: Object.keys(U.mmax||{}).map(Number), teams: U.teams || [], sets: U.sets || [],
     ov: U.ov, extra: U.extra, icons};
   downloadBlob(`galanthus_backup_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(data)], {type:"application/json"}));
   $("bk-msg").textContent = `書き出しました（所持${Object.keys(U.own).length}体・作成済み${Object.keys(U.made).length}体・アイコン${Object.keys(icons).length}枚）。`;
 };
 function parseBackup(data){
   if (!data || typeof data !== "object" || data.app !== "galanthus") throw new Error("not galanthus");
-  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: migrateRS(sanitizeTeams(data.teams), data.rs)};
+  const nu = {own: noMap(data.own), made: noMap(data.made), del: noMap(data.del), ov:{}, extra:{}, mown: noMap(data.mown), mmax: noMap(data.mmax), teams: migrateRS(sanitizeTeams(data.teams), data.rs), sets: sanitizeSets(data.sets)};
   if (data.ov || data.extra){ const x = sanitizeU(data); nu.ov = x.ov; nu.extra = x.extra; }
   else if (Array.isArray(data.chars)){
     // 古い形式（全キャラ入り）：マスターで空欄の項目だけ補い、マスターの値は上書きしない
