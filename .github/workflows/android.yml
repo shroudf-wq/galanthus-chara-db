@@ -1,0 +1,72 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'data/**', 'icons/**', 'desktop/package.json', '.github/workflows/android.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'APKを添付するリリースのタグ（例：v1.11.0）。空ならビルドだけ'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: 署名用の鍵を用意
+        if: env.HAS_KEY == 'true'
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KS_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: ビルド
+        working-directory: android
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KS_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_FILE" ]; then gradle --no-daemon --stacktrace assembleRelease; else gradle --no-daemon --stacktrace assembleDebug; fi
+
+      - name: APKをまとめる
+        run: |
+          mkdir -p out
+          if [ -n "$KS_FILE" ]; then cp android/app/build/outputs/apk/release/app-release.apk out/Galanthus.apk; else cp android/app/build/outputs/apk/debug/app-debug.apk out/Galanthus-debug.apk; fi
+          rm -f "$RUNNER_TEMP/release.jks"
+          cd out && sha256sum *.apk | tee SHA256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: out/
+
+      - name: リリースに添付
+        if: env.HAS_KEY == 'true' && (github.event_name == 'release' || inputs.tag != '')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          case "$TAG" in v[0-9]*) ;; *) echo "タグの形が正しくありません: $TAG"; exit 1;; esac
+          gh release upload "$TAG" out/Galanthus.apk --clobber

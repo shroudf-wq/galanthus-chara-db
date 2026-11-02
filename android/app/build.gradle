@@ -1,0 +1,63 @@
+plugins {
+    id 'com.android.application'
+}
+
+// 版数は Windows 版（desktop/package.json）とそろえる
+def appVer = new groovy.json.JsonSlurper().parse(file("../../desktop/package.json")).version as String
+def vp = appVer.tokenize('.').collect { it as int }
+def ksFile = System.getenv("KS_FILE")
+
+android {
+    namespace 'io.github.shroudfwq.galanthus'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.shroudfwq.galanthus'
+        minSdk 24
+        targetSdk 34
+        versionCode vp[0] * 10000 + vp[1] * 100 + vp[2]
+        versionName appVer
+    }
+
+    signingConfigs {
+        release {
+            if (ksFile) {
+                storeFile file(ksFile)
+                storePassword System.getenv("KS_PASS")
+                keyAlias System.getenv("KS_ALIAS")
+                keyPassword System.getenv("KS_KEY_PASS")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (ksFile) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += [layout.buildDirectory.dir("generated/webassets").get().asFile]
+        }
+    }
+}
+
+// アプリ本体（android/web/index.html）と、リポジトリのデータ・アイコンを同梱する
+def copyWeb = tasks.register('copyWeb', Copy) {
+    into layout.buildDirectory.dir("generated/webassets/web")
+    from('../web') { include 'index.html' }
+    from('../../data') { into 'data'; include '*.json' }
+    from('../../icons') { into 'icons'; include '*.png' }
+}
+preBuild.dependsOn copyWeb
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

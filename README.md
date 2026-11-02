@@ -1,0 +1,37 @@
+# Galanthus キャラDB
+
+キャラのステータス・評価（全キャラ中のパーセントランク）・タイプ・スキル・アビリティを検索・並べ替えでき、自分の所持状況・作成済み・アイコンを管理できるWebアプリです。
+
+- サーバー不要の静的サイトです。GitHub Pages などにそのまま置けば動きます。
+- 所持状況・アイコン・自分で追加や編集した内容は、各利用者のブラウザ（IndexedDB）にだけ保存されます。
+- 「登録・管理」タブのバックアップで、別の端末へ移せます。
+- スマホではホーム画面に追加するとアプリとして起動でき、オフラインでも使えます。
+
+## ファイル
+- `index.html` … アプリ本体
+- `data/chars.json` … キャラの基本データ（`updated` に更新日）
+- `data/details.json` … スキル・アビリティなど（キーはNo.）
+- `data/memories.json` … フラワーメモリー（`id` は所持記録のキーなので、既存の `id` は変えずに新しいものを末尾に追加する）
+- `data/stages.json` … 高難易度ステージ（敵の名前・弱点属性・アビリティ、注意点のタグ。`id` は編成に記録されるので変えない）
+- `sw.js` / `manifest.webmanifest` / `icons/` … オフライン対応とホーム画面用
+
+## キャラデータの更新
+1. `data/chars.json`・`data/details.json`・`data/memories.json`・`data/stages.json` を更新する
+2. `data/chars.json` の `rev` と `data/version.json` の `rev` を、同じ数字で1つ上げる（`updated` も更新）
+3. main ブランチに push する
+
+アプリ（Web版・Windows版とも）は起動時に `version.json` を GitHub から確認し、`rev` が新しければ最新データを取得して切り替えます。
+取得したデータは端末に保存されるので、次回からはオフラインでも最新データで起動します。
+利用者の所持状況・アイコン・自分で編集した値はそのまま残ります（編集した値は、そのキャラについては利用者の値が優先されます）。
+
+## Windows版
+`desktop/` にElectron用の `main.js` と `package.json` があります。`desktop/web/` にこのリポジトリの `index.html`（Service Worker登録を除いたもの）・`data/`・`icons/` を置いて、`@electron/packager` で `--platform=win32 --arch=x64` を指定してビルドします。
+
+### 新しいバージョンのお知らせ
+Windows版は起動時に `desktop/latest.json` の `version` を確認し、自分より新しければ画面上部にお知らせを出します（ダウンロードページは GitHub の Releases に固定。アプリが自分で実行ファイルを入れ替えることはしません）。
+新しい版を出すときは、先に Releases に zip を載せてから、`desktop/latest.json` の `version` を上げて push します（順番が逆だと、ダウンロードできない状態でお知らせが出ます）。
+
+## データの出典
+スキル・アビリティ・花言葉・フラワーメモリー・高難易度ステージの敵情報は「FLOWER KNIGHT GIRL Wiki*」（wikiwiki.jp/flower2ch）の公開情報をもとにしています。ステータス等は利用者自身の記録です。
+ゲームの画像・テキスト等の著作権は合同会社EXNOAに帰属します（『FLOWER KNIGHT GIRL』©2015 EXNOA LLC）。
+キャラの画像は含みません（アイコンは各利用者が自分のスクショから端末内に登録します）。
