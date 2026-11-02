@@ -63,10 +63,21 @@ jobs:
           path: out/
 
       - name: リリースに添付
-        if: env.HAS_KEY == 'true' && (github.event_name == 'release' || inputs.tag != '')
+        if: env.HAS_KEY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+          EV: ${{ github.event_name }}
+          REL_TAG: ${{ github.event.release.tag_name }}
+          IN_TAG: ${{ inputs.tag }}
         run: |
-          case "$TAG" in v[0-9]*) ;; *) echo "タグの形が正しくありません: $TAG"; exit 1;; esac
+          VER=$(python3 -c "import json;print(json.load(open('desktop/package.json'))['version'])")
+          if [ "$EV" = "release" ]; then TAG="$REL_TAG"
+          elif [ -n "$IN_TAG" ]; then TAG="$IN_TAG"
+          else
+            # push のときは、同じ版数のリリースにまだAPKがなければ添付する
+            TAG=$(gh release list --limit 30 --json tagName -q '.[].tagName' | while read -r t; do v=$(echo "$t" | sed -E 's/^[vV]\.?//'); if [ "$v" = "$VER" ]; then echo "$t"; break; fi; done)
+            if [ -z "$TAG" ]; then echo "版数 $VER のリリースがないので添付しません"; exit 0; fi
+            if gh release view "$TAG" --json assets -q '.assets[].name' | grep -qx 'Galanthus.apk'; then echo "添付済み"; exit 0; fi
+          fi
+          case "$TAG" in ""|*[!A-Za-z0-9._-]*) echo "タグの形が正しくありません: $TAG"; exit 1;; esac
           gh release upload "$TAG" out/Galanthus.apk --clobber
