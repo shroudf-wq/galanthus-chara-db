@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-rnksArs5nyAsT561hoToTTbxw2vAgIXsGkLnx+KROg4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-8mXFQXdRIU2mhWWcWBqgf04DkDxtF+/br4TR4FFtioc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -301,6 +301,7 @@ table.db tbody tr:hover td, table.db tbody tr:hover td.name{background:var(--acc
 tr.sel td,.cards-list li.sel{background:var(--accent-soft)}
 tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:var(--accent);font-weight:700}
 .tag.new{background:#d9480f;color:#fff}
+.tag.cb{background:#e7e0f5;color:#5b3f99}
 .tag.grow{background:var(--accent-soft);color:var(--accent)}
 .nmcell .tag{margin-left:6px;font-size:10.5px;padding:0 6px}
 .note-sec h3{margin:0 0 6px;font-size:15px}
@@ -471,6 +472,7 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
           <label class="sel">作成 <select id="f-made"><option value="">すべて</option><option value="1">作成済み</option><option value="0">未作成</option></select></label>
           <label class="sel">評価S以上 <select id="f-grade"><option value="">指定なし</option><option value="hp">HP</option><option value="at">攻撃力</option><option value="df">防御力</option><option value="mv">移動力</option><option value="tot">総合力</option></select></label>
           <label class="sel">育成 <select id="f-grow"><option value="">すべて</option><option value="b">開花済み</option><option value="nb">未開花</option><option value="s">昇華済み</option><option value="e">専用装備★6（錬成できる）</option><option value="m">メモあり</option></select></label>
+          <label class="sel">コラボ <select id="f-cb"><option value="">すべて</option><option value="no">コラボを除く</option><option value="キャラ">コラボキャラのみ</option><option value="衣装">コラボ衣装の花騎士のみ</option><option value="any">コラボすべて</option></select></label>
           <label class="sel">新着 <select id="f-nw"><option value="">すべて</option><option value="1">NEWのみ</option></select></label>
         </div>
         <div class="trow fp-row">
@@ -703,7 +705,7 @@ let chars = [];            // merged list
 let calc = {};             // stat -> sorted ascending values
 let view = "list", mode = "val", limit = 400;
 let sortKey = "n", sortDir = 1;
-const F = { q:"", qa:"", attr:new Set(), nat:new Set(), rar:new Set(), tp:new Set(), year:"", src:"", like:"", own:"", made:"", grade:"", grow:"", nw:"" };
+const F = { q:"", qa:"", attr:new Set(), nat:new Set(), rar:new Set(), tp:new Set(), year:"", src:"", like:"", own:"", made:"", grade:"", grow:"", nw:"", cb:"" };
 let NEWSET = new Set(), lastRows = [], selMode = false; const SEL = new Set();
 
 /* ---------- storage of UI prefs (per viewer, optional) ---------- */
@@ -735,7 +737,7 @@ function measure(k, v, arr = calc[k]){
 function mOf(c, k){ c._m = c._m || {}; return c._m[k] || (c._m[k] = measure(k, c[k])); }
 
 /* ---------- 入力の検証：外から来るデータ（GitHub・バックアップ・保存済みデータ）は必ずここを通す ---------- */
-const STR_MAX = {a:4, k:12, nm:80, r:4, src:40, like:20, tp:20, sp:40, srcD:200};
+const STR_MAX = {a:4, k:12, nm:80, r:4, src:40, like:20, tp:20, sp:40, srcD:200, cb:4};
 const NUM_KEYS = ["hp","at","df","mv","tot"];
 const isNo = n => Number.isSafeInteger(n) && n > 0 && n < 1e7;
 function vStr(v, max){ return typeof v === "string" ? v.slice(0, max) : (typeof v === "number" && Number.isFinite(v) ? String(v).slice(0, max) : ""); }
@@ -865,7 +867,7 @@ function sanitizeNotes(x){
   }
   return o;
 }
-const FP_STR = ["q","qa","year","src","like","own","made","grade","grow","nw"], FP_SET = ["attr","nat","rar","tp"];
+const FP_STR = ["q","qa","year","src","like","own","made","grade","grow","nw","cb"], FP_SET = ["attr","nat","rar","tp"];
 function sanitizeFps(x){
   if (!Array.isArray(x)) return [];
   return x.slice(0, 30).filter(z => z && typeof z === "object" && z.f && typeof z.f === "object").map(z => {
@@ -1077,6 +1079,7 @@ function matches(c){
     if (F.grow === "b" && !g.b) return false; if (F.grow === "nb" && g.b) return false;
     if (F.grow === "s" && !g.s) return false; if (F.grow === "e" && !g.e) return false; if (F.grow === "m" && !g.t) return false; }
   if (F.nw && !NEWSET.has(c.n)) return false;
+  if (F.cb){ const cb = c.cb || ""; if (F.cb === "no" ? cb : F.cb === "any" ? !cb : cb !== F.cb) return false; }
   return true;
 }
 
@@ -1123,7 +1126,7 @@ function render(){
       <td class="no r">${esc(c.n)}</td>
       <td><span class="attr ${esc(c.a)}">${esc(c.a)}</span></td>
       <td>${esc(c.k)}</td>
-      <td class="name" title="${esc(c.nm)}"><span class="nmcell">${iconHTML(c)}<span>${esc(c.nm)}</span>${c.nw?`<span class="tag new">NEW</span>`:""}${growTags(c)}</span></td>
+      <td class="name" title="${esc(c.nm)}"><span class="nmcell">${iconHTML(c)}<span>${esc(c.nm)}</span>${c.nw?`<span class="tag new">NEW</span>`:""}${cbTag(c)}${growTags(c)}</span></td>
       <td class="rar">${esc(c.r)}</td>
       <td class="tp">${esc(c.tp||"")}</td>
       <td class="r">${statCell(c,"hp")}</td><td class="r">${statCell(c,"at")}</td><td class="r">${statCell(c,"df")}</td><td class="r">${statCell(c,"mv")}</td><td class="r">${statCell(c,"tot")}</td>
@@ -1145,9 +1148,10 @@ function cardHTML(c){
   return `<li data-n="${esc(c.n)}" class="${SEL.has(c.n)?"sel":""}">${iconHTML(c)}
     <div class="cl-name"><span class="no">${esc(c.n)}</span>${esc(c.nm)}</div>
     <button class="own ${c.own?"on":"off"}" data-act="own" aria-label="所持を切り替え">${c.own?"所持":"未所持"}</button>
-    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${esc(c.y||"")}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}${c.nw?`<span class="tag new">NEW</span>`:""}${growTags(c)}</div>
+    <div class="cl-meta"><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span>${c.tp?`<span>${esc(c.tp)}</span>`:""}<span>${esc(c.y||"")}</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${c.made?`<span class="tag">作成済み</span>`:""}${c.nw?`<span class="tag new">NEW</span>`:""}${cbTag(c)}${growTags(c)}</div>
     <div class="cl-stats">${stat("hp","HP")}${stat("at","攻撃")}${stat("df","防御")}${stat("mv","移動")}${stat("tot","総合")}</div></li>`;
 }
+function cbTag(c){ return c.cb === "キャラ" ? `<span class="tag cb" title="他の作品から来たコラボキャラ">コラボ</span>` : c.cb === "衣装" ? `<span class="tag cb" title="花騎士がコラボ作品の衣装を着たもの">コラボ衣装</span>` : ""; }
 function growTags(c){
   const g = U.notes?.[c.n]; if (!g) return "";
   return (g.b ? `<span class="tag grow">開花</span>` : "") + (g.s ? `<span class="tag grow">昇華</span>` : "") + (g.e ? `<span class="tag grow">専★6</span>` : "") + (g.t ? `<span class="tag grow" title="${esc(g.t)}">メモ</span>` : "");
@@ -1173,7 +1177,7 @@ $("selbar").onclick = async e => {
 };
 function activeFilterCount(){
   let n = F.attr.size + F.nat.size + F.rar.size + F.tp.size;
-  for (const k of ["year","src","like","own","made","grade","grow","nw"]) if (F[k]) n++;
+  for (const k of ["year","src","like","own","made","grade","grow","nw","cb"]) if (F[k]) n++;
   return n;
 }
 function updateFilterBadge(){ const n = activeFilterCount(); $("fcount").hidden = !n; $("fcount").textContent = n; }
@@ -2114,7 +2118,7 @@ function openSheet(n){
     <div class="sheet-h"><div class="sh-top">
       <div class="icbtns">${iconHTML(c,"lg")}${assets && canWrite ? `<button class="linkbtn" id="ic-set" type="button">${c.ic?"変更":"アイコン設定"}</button>${c.ic?`<button class="linkbtn del" id="ic-del" type="button">削除</button>`:""}` : ""}</div>
       <div style="min-width:0"><h2 id="sh-name">${esc(c.nm)}</h2>
-      <div class="meta"><span class="num">No.${esc(c.n)}</span><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span><span>${esc(c.y||"")}年</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}</div></div></div>
+      <div class="meta"><span class="num">No.${esc(c.n)}</span><span class="attr ${esc(c.a)}">${esc(c.a)}</span><span>${esc(c.k)}</span><span>${esc(c.r)}</span><span>${esc(c.y||"")}年</span>${c.src?`<span class="tag${c.src==="期間限定"?" lim":""}">${esc(c.src)}</span>`:""}${cbTag(c)}</div></div></div>
       <div class="sh-nav"><button class="ghost" type="button" id="sh-prev" aria-label="前のキャラ" title="前のキャラ（←）">‹</button><button class="ghost" type="button" id="sh-next" aria-label="次のキャラ" title="次のキャラ（→）">›</button><button class="x" id="sh-close" aria-label="閉じる">×</button></div></div>
     <div class="sheet-b">
       <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${esc(c[k])}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
@@ -2546,15 +2550,15 @@ $("thead").addEventListener("click", e => {
 });
 let qt; $("q").addEventListener("input", e => { clearTimeout(qt); qt = setTimeout(()=>{ F.q = e.target.value.trim(); limit=400; render(); }, 120); });
 let qat; $("qa").addEventListener("input", e => { clearTimeout(qat); qat = setTimeout(()=>{ F.qa = e.target.value.trim().toLowerCase(); limit=400; render(); }, 200); });
-for (const [id,key] of [["f-year","year"],["f-src","src"],["f-like","like"],["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"]])
+for (const [id,key] of [["f-year","year"],["f-src","src"],["f-like","like"],["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"],["f-cb","cb"]])
   $(id).addEventListener("change", e => { F[key] = e.target.value; limit=400; render(); });
 document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
   mode = b.dataset.mode; document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x===b)); savePrefs(); render();
 });
 $("reset").onclick = () => {
   F.q=""; $("q").value=""; F.qa=""; $("qa").value=""; F.attr.clear(); F.nat.clear(); F.rar.clear(); F.tp.clear();
-  for (const k of ["year","src","like","own","made","grade","grow","nw"]) F[k]="";
-  ["f-own","f-made","f-grade","f-grow","f-nw"].forEach(id=>$(id).value="");
+  for (const k of ["year","src","like","own","made","grade","grow","nw","cb"]) F[k]="";
+  ["f-own","f-made","f-grade","f-grow","f-nw","f-cb"].forEach(id=>$(id).value="");
   $("fp-sel").value = ""; $("fp-del").disabled = true;
   limit=400; buildFilters(); render();
 };
@@ -2569,7 +2573,7 @@ $("fp-sel").onchange = e => {
   for (const k of FP_STR) F[k] = z.f[k] || "";
   for (const k of FP_SET){ F[k].clear(); for (const v of z.f[k]) F[k].add(v); }
   $("q").value = F.q; $("qa").value = F.qa;
-  for (const [id, k] of [["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"]]) $(id).value = F[k];
+  for (const [id, k] of [["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"],["f-cb","cb"]]) $(id).value = F[k];
   sortKey = z.sk; sortDir = z.sd; savePrefs(); limit = 400; buildFilters(); render();
   toast(`「${z.name}」の条件にしました`);
 };
@@ -2810,7 +2814,7 @@ async function checkRemote(manual){
   }
 })();
 /* ---------- Android版：新しいバージョンのお知らせ（自動で入れ替えはしない） ---------- */
-const APP_VER = "1.12.0";
+const APP_VER = "1.13.0";
 function verCmp(a, b){ const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++){ if (x[i] !== y[i]) return x[i] - y[i]; } return 0; }
 async function checkAppUpdate(){
   try {
