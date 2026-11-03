@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-ApgwpIhEnafwuAYZxjRpIy1WmGoDfp9cycmddk/AnFQ='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-smaOa3xwL6PKrdMkgY78kSurpdx92PxnhEkI0JOto30='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -28,7 +28,7 @@
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
   --r:8px;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+@media (prefers-color-scheme: dark){:root:not([data-theme]){
   --bg:#121815; --surface:#19211c; --sunk:#0f1411; --line:#2a352e; --line-strong:#3c4a41;
   --fg:#e3ebe5; --muted:#9db0a3; --faint:#71837a;
   --accent:#7cc79a; --accent-soft:#213a2b; --accent-fg:#0d1a12;
@@ -44,6 +44,16 @@
   --g-S:#5fc48c; --g-A:#7cc06a; --g-B:#a6c25c; --g-C:#cfc65a; --g-D:#e0ad55; --g-E:#e39461; --g-F:#d98571; --g-G:#8d8682;
   --at-slash:#f07a6e; --at-blunt:#6fa8e8; --at-pierce:#e8b34f; --at-magic:#ad8be0; --at-dream:#e88cc2;
   color-scheme:dark}
+/* 図鑑風（案1） */
+:root[data-theme="zukan"]{
+  --bg:#f4ecdb; --surface:#fffaf0; --sunk:#efe4cc; --line:#e3d3ad; --line-strong:#c9b27c;
+  --fg:#3a2e22; --muted:#6b5a44; --faint:#8a7656;
+  --accent:#7a5a1e; --accent-soft:#f3e3bd; --accent-fg:#fffaf0;
+  --danger:#a3362a; --danger-soft:#f6dfd8;
+  --at-slash:#c2302a; --at-blunt:#1c63bf; --at-pierce:#9a6c06; --at-magic:#7b3fc4; --at-dream:#c23a7a;
+  --r:10px; color-scheme:light}
+/* ダーク・高密度（案3） */
+:root[data-theme="dark"]{--r:6px}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
 body{margin:0;font-size:14px;-webkit-text-size-adjust:100%}
@@ -112,10 +122,55 @@ td.no{color:var(--faint);font-variant-numeric:tabular-nums}
 .g{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;font-size:11px;font-weight:700;color:#fff;flex:none}
 .g.S{background:var(--g-S)}.g.A{background:var(--g-A)}.g.B{background:var(--g-B)}.g.C{background:var(--g-C)}.g.D{background:var(--g-D)}.g.E{background:var(--g-E)}.g.F{background:var(--g-F)}.g.G{background:var(--g-G)}
 :root[data-theme="dark"] .g{color:#10160f}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .g{color:#10160f}}
+@media (prefers-color-scheme: dark){:root:not([data-theme]) .g{color:#10160f}}
 .attr{display:inline-block;font-weight:700;width:1.4em;text-align:center}
 .attr.斬{color:var(--at-slash)}.attr.打{color:var(--at-blunt)}.attr.突{color:var(--at-pierce)}.attr.魔{color:var(--at-magic)}.attr.夢{color:var(--at-dream)}
 .rar{font-size:12px;letter-spacing:-.02em}
+:root[data-theme="zukan"] header.top{background:#3b2a1e;color:#f4ecdb;border-radius:12px;padding:16px 22px;border-bottom:3px solid #b8964f}
+:root[data-theme="zukan"] .brand p,:root[data-theme="zukan"] .summary span,:root[data-theme="zukan"] .brand h1 small{color:#d9c79f}
+:root[data-theme="zukan"] .summary .miss b{color:#ffb4a8}
+:root[data-theme="zukan"] nav.tabs button[aria-selected="true"]{border-bottom-color:#b8964f}
+:root[data-theme="zukan"] .panel,:root[data-theme="zukan"] .toolbar{box-shadow:0 1px 0 #e3d3ad}
+:root[data-theme="zukan"] .panel h2,:root[data-theme="zukan"] .sheet-h h2,:root[data-theme="zukan"] .home-kpi b{font-family:var(--f-display)}
+:root[data-theme="zukan"] .primary{background:#3b2a1e;color:#f4ecdb}
+:root[data-theme="dark"] body{font-size:13px;line-height:1.45}
+:root[data-theme="dark"] .wrap{padding-block:12px 40px;gap:12px}
+:root[data-theme="dark"] table.db td{padding:3px 7px}
+:root[data-theme="dark"] table.db th{padding:5px 7px}
+:root[data-theme="dark"] .panel{padding:10px 12px}
+:root[data-theme="dark"] td.no,:root[data-theme="dark"] .stat{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace}
+/* 図鑑表示 */
+.zgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.zgrid li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;text-align:center;min-width:0}
+.zgrid li:hover{border-color:var(--line-strong)}
+.zgrid li.missing{opacity:.48}
+.zgrid li.sel{outline:2px solid var(--accent);background:var(--accent-soft);opacity:1}
+.zgrid .ic{width:64px;height:64px;border-radius:50%;font-size:26px;font-family:var(--f-display)}
+.zgrid .ring{border-radius:50%;padding:3px;display:inline-flex}
+.zgrid .ring.斬{background:var(--at-slash)}.zgrid .ring.打{background:var(--at-blunt)}.zgrid .ring.突{background:var(--at-pierce)}.zgrid .ring.魔{background:var(--at-magic)}.zgrid .ring.夢{background:var(--at-dream)}
+.zgrid .zn{font-size:12px;font-weight:700;line-height:1.3;min-height:31px;overflow-wrap:anywhere}
+.zgrid .zr{font-size:11px;color:var(--faint)}
+.zgrid .tag{font-size:10px;padding:0 5px}
+@media (max-width:720px){.zgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.zgrid .ic{width:52px;height:52px;font-size:21px}}
+/* ホーム */
+.home-kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.home-kpi .panel{display:flex;flex-direction:column;gap:4px}
+.home-kpi small{color:var(--muted);font-size:12.5px}
+.home-kpi b{font-size:28px;line-height:1.15;font-variant-numeric:tabular-nums}
+.home-kpi b span{font-size:14px;color:var(--muted);font-weight:500}
+.home-kpi .sub{font-size:12px;color:var(--muted)}
+.home-kpi .bar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;margin-top:6px}.home-kpi .bar i{display:block;height:100%;background:var(--accent)}
+.home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.home-grid .span2{grid-column:1/-1}
+.hp-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}.hp-h h2{margin:0;font-size:15px}.hp-h .ghost{margin-left:auto}
+.hl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hl li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid var(--line);cursor:pointer;min-width:0}
+.hl li:last-child{border-bottom:0}
+.hl li .t{flex:1;min-width:0}.hl li .t b{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hl li .t small{color:var(--muted);font-size:12px}
+.hl li.muted{cursor:default;color:var(--muted)}
+.hl.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+@media (max-width:720px){.home-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}.home-grid{grid-template-columns:minmax(0,1fr)}.hl.cols{grid-template-columns:minmax(0,1fr)}.home-kpi b{font-size:22px}}
+.themesel{margin-right:8px;font-size:12.5px}
 .tag{font-size:11.5px;padding:1px 7px;border-radius:999px;background:var(--sunk);color:var(--muted)}
 .tag.lim{background:var(--danger-soft);color:var(--danger)}
 .own{border:1px solid var(--line-strong);border-radius:999px;background:var(--bg);font-size:12px;padding:0 9px;cursor:pointer;min-width:52px}
@@ -384,7 +439,9 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
   .summary{width:100%;justify-content:space-between}
   .own-rate{flex-basis:100%;min-width:0 !important}
   .summary div:not(.own-rate){min-width:0;align-items:flex-start}
-  nav.tabs button{padding:8px 10px 9px}
+  nav.tabs button{padding:8px 10px 9px;white-space:nowrap;flex:none}
+  nav.tabs{overflow-x:auto;scrollbar-width:none}
+  nav.tabs .themesel{display:none}
   #btn-csv{display:none}
   .sheet{width:100%}
 }
@@ -419,12 +476,14 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
   </header>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" id="tab-list" aria-selected="true" data-view="list">一覧</button>
+    <button role="tab" id="tab-home" aria-selected="true" data-view="home">ホーム</button>
+    <button role="tab" id="tab-list" aria-selected="false" data-view="list">一覧</button>
     <button role="tab" id="tab-stats" aria-selected="false" data-view="stats">集計</button>
     <button role="tab" id="tab-mem" aria-selected="false" data-view="mem">メモリー</button>
     <button role="tab" id="tab-team" aria-selected="false" data-view="team">編成</button>
     <button role="tab" id="tab-add" aria-selected="false" data-view="add">登録・管理</button>
     <span class="spacer"></span>
+        <label class="sel themesel">見た目 <select id="theme-sel" aria-label="見た目"><option value="auto">端末に合わせる</option><option value="zukan">図鑑風</option><option value="dark">ダーク（詰めて表示）</option></select></label>
         <button class="ghost" id="btn-csv">CSVで書き出し</button>
   </nav>
 
@@ -434,6 +493,14 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
   </div>
 
   <!-- LIST -->
+  <section id="view-home" hidden>
+    <div class="home-kpi" id="home-kpi"></div>
+    <div class="home-grid">
+      <div class="panel"><div class="hp-h"><h2>新着キャラ</h2><button class="ghost" type="button" id="home-new-go">一覧で見る</button></div><ul class="hl" id="home-new"></ul></div>
+      <div class="panel"><div class="hp-h"><h2>出撃セット</h2><button class="ghost" type="button" id="home-sets-go">編成を開く</button></div><ul class="hl" id="home-sets"></ul></div>
+      <div class="panel span2"><div class="hp-h"><h2>未所持の期間限定（コラボを除く・新しい順）</h2><button class="ghost" type="button" id="home-lim-go">一覧で見る</button></div><ul class="hl cols" id="home-lim"></ul></div>
+    </div>
+  </section>
   <section id="view-list" hidden>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="welcome" id="welcome" hidden>
@@ -444,7 +511,8 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
         <div class="trow">
           <div class="search"><input id="q" type="search" placeholder="名前で検索（例：リコ、夏の思い出）" autocomplete="off"></div>
           <div class="search"><input id="qa" type="search" placeholder="スキル・アビリティで検索（例：再行動、スキル発動率）" autocomplete="off"></div>
-          <div class="seg" role="group" aria-label="表示">
+          <div class="seg lmode" role="group" aria-label="一覧の形" id="lmode"><button type="button" data-lm="table" aria-pressed="true">表</button><button type="button" data-lm="grid" aria-pressed="false">図鑑</button></div>
+          <div class="seg vmode" role="group" aria-label="表示">
             <button id="m-val" data-mode="val" aria-pressed="true">値</button>
             <button id="m-rank" data-mode="rank" aria-pressed="false">順位</button>
             <button id="m-pct" data-mode="pct" aria-pressed="false">割合</button>
@@ -483,6 +551,7 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
         <div class="selbar" id="selbar" hidden></div>
       </div>
       <ul class="cards-list" id="cardlist" hidden></ul>
+      <ul class="zgrid" id="zgrid" hidden></ul>
       <div class="tablebox" id="tablebox">
         <table class="db" id="tbl">
           <thead><tr id="thead"></tr></thead>
@@ -621,6 +690,11 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
   <!-- ADD -->
   <section id="view-add" hidden>
     <div class="cards">
+      <div class="panel" id="lookp">
+        <h2>見た目</h2>
+        <p class="note">ホームは常に最初に表示します。画面の色と詰め具合を選べます（この端末に保存）。「端末に合わせる」は、端末がダークモードならダーク、それ以外は図鑑風になります。</p>
+        <label class="sel">見た目 <select id="theme-sel2" aria-label="見た目"><option value="auto">端末に合わせる</option><option value="zukan">図鑑風</option><option value="dark">ダーク（詰めて表示）</option></select></label>
+      </div>
       <div class="panel" id="backup">
         <h2>バックアップ</h2>
         <p class="note">所持状況・作成済み・アイコン・自分で追加や編集した内容は、このブラウザの中にだけ保存されています。機種変更や別の端末で使うときは、ここで書き出したファイルを読み込んでください。ブラウザのデータを消すと失われるので、ときどき書き出しておくと安心です。</p>
@@ -700,7 +774,7 @@ let db = null, canWrite = true;
 const bands = {};          // bandId -> {chars:{no:obj}}
 let chars = [];            // merged list
 let calc = {};             // stat -> sorted ascending values
-let view = "list", mode = "val", limit = 400;
+let view = "home", mode = "val", limit = 400;
 let sortKey = "n", sortDir = 1;
 const F = { q:"", qa:"", attr:new Set(), nat:new Set(), rar:new Set(), tp:new Set(), year:"", src:"", like:"", own:"", made:"", grade:"", grow:"", nw:"", cb:"" };
 let NEWSET = new Set(), lastRows = [], selMode = false; const SEL = new Set();
@@ -1100,7 +1174,7 @@ function statCell(c,k){
   return `<span class="stat">${esc(v)}<span class="g ${m.grade}">${m.grade}</span></span>`;
 }
 function render(){
-  if (view !== "list") { if (view==="stats") renderStats(); else if (view==="mem") renderMem(); else if (view==="team"){ renderTeam(); } return; }
+  if (view !== "list") { if (view==="home") renderHome(); else if (view==="stats") renderStats(); else if (view==="mem") renderMem(); else if (view==="team"){ renderTeam(); } return; }
   renderHead();
   let rows = chars.filter(matches);
   const k = sortKey, d = sortDir;
@@ -1110,6 +1184,15 @@ function render(){
   lastRows = rows.map(c => c.n);
   renderSelBar();
   const shown = rows.slice(0, limit);
+  $("zgrid").hidden = LMODE !== "grid";
+  document.querySelectorAll("#lmode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lm === LMODE));
+  if (LMODE === "grid"){
+    $("tbody").innerHTML = ""; $("cardlist").hidden = true; $("cardlist").innerHTML = ""; $("tablebox").hidden = true;
+    $("zgrid").innerHTML = (shown.length ? shown.map(c => `<li data-n="${esc(c.n)}" class="${c.own ? "" : "missing"}${SEL.has(c.n) ? " sel" : ""}"><span class="ring ${esc(c.a)}">${iconHTML(c)}</span><span class="zn">${esc(c.nm)}</span><span class="zr">${esc(c.r)}・${esc(c.tp || "")}</span>${c.nw ? `<span class="tag new">NEW</span>` : ""}</li>`).join("") : `<li class="muted" style="grid-column:1/-1;cursor:default">条件に合うキャラがいません。</li>`)
+      + (rows.length > limit ? `<li style="grid-column:1/-1;cursor:default"><button class="ghost" type="button" id="zg-more">さらに表示（残り${rows.length - limit}体）</button></li>` : "");
+    return;
+  }
+  $("tablebox").hidden = false;
   if (MOBILE.matches){
     $("tbody").innerHTML = ""; $("cardlist").hidden = false;
     $("cardlist").innerHTML = (shown.length ? shown.map(cardHTML).join("") : `<li class="cl-empty">条件に合うキャラがいません。条件をゆるめてください。</li>`)
@@ -1187,6 +1270,54 @@ function syncSortUI(){
 }
 $("sortsel").onchange = e => { sortKey = e.target.value; sortDir = ["n","nm"].includes(sortKey) ? 1 : -1; savePrefs(); render(); };
 $("sortdir").onclick = () => { sortDir = -sortDir; savePrefs(); render(); };
+let LMODE = "table";
+try { LMODE = localStorage.getItem("galanthus-lmode") === "grid" ? "grid" : "table"; } catch(e){}
+document.querySelectorAll("#lmode button").forEach(b => b.onclick = () => { LMODE = b.dataset.lm === "grid" ? "grid" : "table"; try { localStorage.setItem("galanthus-lmode", LMODE); } catch(e){} render(); });
+$("zgrid").addEventListener("click", e => {
+  if (e.target.id === "zg-more"){ limit += 600; render(); return; }
+  const li = e.target.closest("li[data-n]"); if (!li) return;
+  const n = Number(li.dataset.n); if (selMode){ toggleSel(n); return; } openSheet(n);
+});
+/* --- 見た目（端末ごとに保存） --- */
+const DARKQ = matchMedia("(prefers-color-scheme: dark)");
+let THEME = "auto";
+try { const t = localStorage.getItem("galanthus-theme"); if (["auto","zukan","dark"].includes(t)) THEME = t; } catch(e){}
+function applyTheme(){
+  const t = THEME === "auto" ? (DARKQ.matches ? "dark" : "zukan") : THEME;
+  document.documentElement.setAttribute("data-theme", t);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute("content", t === "dark" ? "#121815" : "#3b2a1e"));
+  $("theme-sel").value = THEME; $("theme-sel2").value = THEME;
+}
+DARKQ.addEventListener?.("change", applyTheme);
+$("theme-sel").onchange = $("theme-sel2").onchange = e => { THEME = e.target.value; try { localStorage.setItem("galanthus-theme", THEME); } catch(err){} applyTheme(); };
+applyTheme();
+/* --- ホーム --- */
+function renderHome(){
+  const total = chars.length, own = chars.filter(c => c.own).length;
+  const rate = total ? Math.round(own / total * 1000) / 10 : 0;
+  const lim = chars.filter(c => c.src === "期間限定"), limMiss = lim.filter(c => !c.own), limMissNC = limMiss.filter(c => !c.cb);
+  const memOwn = MEM.filter(m => U.mown?.[m.id]).length;
+  const nw = chars.filter(c => c.nw);
+  $("home-kpi").innerHTML =
+    `<div class="panel"><small>所持率</small><b class="num">${rate}<span>%</span></b><div class="sub">${own} / ${total} 体</div><div class="bar"><i style="width:${rate}%"></i></div></div>`
+    + `<div class="panel"><small>新着キャラ</small><b class="num">${nw.length}<span> 体</span></b><div class="sub">${nw.length ? esc(nw.slice(0, 2).map(c => c.nm).join("、")) + (nw.length > 2 ? " ほか" : "") : "データ更新で増えると表示します"}</div></div>`
+    + `<div class="panel"><small>未所持の期間限定</small><b class="num">${limMiss.length}<span> / ${lim.length}</span></b><div class="sub">コラボを除くと ${limMissNC.length} 体</div></div>`
+    + `<div class="panel"><small>フラワーメモリー</small><b class="num">${memOwn}<span> / ${MEM.length}</span></b><div class="sub">所持している枚数</div></div>`;
+  const row = c => `<li data-n="${esc(c.n)}">${iconHTML(c)}<span class="t"><b>${esc(c.nm)}</b><small><span class="attr ${esc(c.a)}">${esc(c.a)}</span> ${esc(c.r)} ${esc(c.tp || "")}${c.own ? "・所持" : ""}</small></span></li>`;
+  $("home-new").innerHTML = nw.slice(0, 6).map(row).join("") || `<li class="muted">新着はありません。データが更新されると、ここに出ます。</li>`;
+  $("home-lim").innerHTML = limMissNC.slice().sort((a, b) => b.n - a.n).slice(0, 12).map(row).join("") || `<li class="muted">未所持の期間限定キャラはいません。</li>`;
+  const S = sets(), T = teams(), byId = new Map(T.filter(t => isNo(t.id)).map(t => [t.id, t]));
+  $("home-sets").innerHTML = S.map((z, i) => ({z, i})).slice(-4).reverse().map(({z, i}) => {
+    const n = z.parts.filter(id => id != null && byId.has(id)).length;
+    const st = z.st != null ? STAGES.find(x => x.id === z.st) : null;
+    return `<li data-set="${i}"><span class="t"><b>${esc(z.name)}</b><small>${n}パーティ${st ? "・" + esc(st.nm) : ""}</small></span></li>`;
+  }).join("") || `<li class="muted">出撃セットはまだありません。「編成」タブで作れます。</li>`;
+}
+$("home-new").onclick = $("home-lim").onclick = e => { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); };
+$("home-sets").onclick = e => { const li = e.target.closest("li[data-set]"); if (!li) return; setIdx = Number(li.dataset.set) || 0; try { localStorage.setItem("galanthus-set", setIdx); } catch(err){} setView("team"); };
+$("home-sets-go").onclick = () => setView("team");
+$("home-new-go").onclick = () => { F.nw = "1"; $("f-nw").value = "1"; setView("list"); };
+$("home-lim-go").onclick = () => { F.src = "期間限定"; F.own = "0"; F.cb = "no"; $("f-own").value = "0"; $("f-cb").value = "no"; buildFilters(); setView("list"); };
 $("cardlist").addEventListener("click", async e => {
   if (e.target.id === "cl-more"){ limit += 600; render(); return; }
   const li = e.target.closest("li[data-n]"); if (!li) return;
@@ -2549,8 +2680,8 @@ let qt; $("q").addEventListener("input", e => { clearTimeout(qt); qt = setTimeou
 let qat; $("qa").addEventListener("input", e => { clearTimeout(qat); qat = setTimeout(()=>{ F.qa = e.target.value.trim().toLowerCase(); limit=400; render(); }, 200); });
 for (const [id,key] of [["f-year","year"],["f-src","src"],["f-like","like"],["f-own","own"],["f-made","made"],["f-grade","grade"],["f-grow","grow"],["f-nw","nw"],["f-cb","cb"]])
   $(id).addEventListener("change", e => { F[key] = e.target.value; limit=400; render(); });
-document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
-  mode = b.dataset.mode; document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x===b)); savePrefs(); render();
+document.querySelectorAll(".seg.vmode button").forEach(b => b.onclick = () => {
+  mode = b.dataset.mode; document.querySelectorAll(".seg.vmode button").forEach(x=>x.setAttribute("aria-pressed", x===b)); savePrefs(); render();
 });
 $("reset").onclick = () => {
   F.q=""; $("q").value=""; F.qa=""; $("qa").value=""; F.attr.clear(); F.nat.clear(); F.rar.clear(); F.tp.clear();
@@ -2601,6 +2732,7 @@ function setView(v){
   render();
 }
 function showPanels(hasData){
+  $("view-home").hidden = !(hasData && view==="home");
   $("view-list").hidden = !(hasData && view==="list");
   $("view-stats").hidden = !(hasData && view==="stats");
   $("view-mem").hidden = !(hasData && view==="mem");
@@ -2630,7 +2762,7 @@ $("btn-csv").onclick = async () => {
 
 /* ---------- boot ---------- */
 loadPrefs();
-document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed", x.dataset.mode===mode));
+document.querySelectorAll(".seg.vmode button").forEach(x=>x.setAttribute("aria-pressed", x.dataset.mode===mode));
 const origRebuild = rebuild;
 function onData(){
   if (typeof renderFps === "function") renderFps();
