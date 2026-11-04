@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-NyYvebitfLEuTPDEB0F1CxssNYNkJG7AAyecgv48jF0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-xmtIjkHK71omJIO+XT4OlhxHHm8YKlwX7OBB32jXdqY='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -253,6 +253,12 @@ details.st summary{cursor:pointer;color:var(--muted);font-size:12px;padding:3px 
 .nmcell span{overflow:hidden;text-overflow:ellipsis}
 td.name{padding-top:3px;padding-bottom:3px}
 .sh-top{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.artbox{display:flex;flex-direction:column;align-items:center;gap:6px}
+.artbox img{display:block;max-width:100%;max-height:62vh;border-radius:10px;cursor:zoom-in;background:var(--sunk)}
+.artbox .actions{margin:0;justify-content:center}
+.artview{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.artview img{max-width:100%;max-height:100%;object-fit:contain}
+:root[data-theme="zukan"] .artbox img{border:2px solid #b8964f;box-shadow:0 0 0 4px var(--bg),0 0 0 5px #d8c08a}
 .icbtns{display:flex;flex-direction:column;gap:4px;align-items:center}
 .linkbtn{background:none;border:0;padding:0;color:var(--accent);font-size:11.5px;cursor:pointer}
 .linkbtn.del{color:var(--danger)}
@@ -730,6 +736,10 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
         <label class="drop" id="icdrop" for="icfiles">ここに画像をドロップ、またはクリックして選択<input type="file" id="icfiles" accept="image/*" multiple hidden></label>
         <div id="icresult"></div>
         <div class="note" id="icusage" style="margin-top:12px"></div>
+        <h2 style="margin-top:22px">立ち絵</h2>
+        <p class="note">立ち絵は、キャラの詳細画面の「立ち絵を登録」から1体ずつ登録します（長い辺1400pxまでに縮めてこの端末に保存）。容量が大きいので、ふつうのバックアップには含めず、ここで別のファイルとして書き出します。読み込むと、ファイルにあるキャラの立ち絵だけが追加・置き換えされます。</p>
+        <div class="actions"><button class="ghost" type="button" id="art-export">立ち絵を書き出す</button><label class="ghost" for="art-file" style="display:inline-block">立ち絵を読み込む<input type="file" id="art-file" accept=".json,application/json" hidden></label></div>
+        <div class="note" id="art-msg" style="margin-top:8px"></div>
       </div>
     </div>
   </section>
@@ -974,8 +984,9 @@ const USER_FIELDS = ["own","made","ic"];
 const idb = (() => {
   let p;
   const open = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open("galanthus", 1);
-    r.onupgradeneeded = () => { r.result.createObjectStore("kv"); r.result.createObjectStore("icons"); };
+    const r = indexedDB.open("galanthus", 2);
+    r.onupgradeneeded = () => { const d = r.result; for (const n of ["kv","icons","arts"]) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n); };
+    r.onblocked = () => toast("別のタブで古い版が開いています。閉じてから読み込み直してください");
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   }));
   const tx = async (store, mode, fn) => { const d = await open(); return new Promise((res, rej) => {
@@ -989,6 +1000,7 @@ const idb = (() => {
       const t = d.transaction(store, "readonly"), st = t.objectStore(store), out = {};
       const cur = st.openCursor(); cur.onsuccess = () => { const c = cur.result; if (c){ out[c.key] = c.value; c.continue(); } else res(out); }; cur.onerror = () => rej(cur.error); }); },
     clear: store => tx(store, "readwrite", st => st.clear()),
+    keys: store => tx(store, "readonly", st => st.getAllKeys()),
     replaceUserAndIcons: async (user, icons) => { const d = await open(); return new Promise((res, rej) => {
       const t = d.transaction(["kv","icons"], "readwrite"); const ic = t.objectStore("icons");
       t.objectStore("kv").put(user, "user"); ic.clear(); for (const [n, b] of icons) ic.put(b, n);
@@ -1005,6 +1017,7 @@ async function reloadIcons(){
 if (BC) BC.onmessage = async e => {
   if (e.data === "user"){ U = sanitizeU(await idb.get("kv","user").catch(()=>null)); onData(); }
   else if (e.data === "icons"){ await reloadIcons(); onData(); renderUsage(); }
+  else if (e.data === "arts"){ await reloadArtKeys(); renderUsage(); if (openNo !== null) showArt(openNo); }
 };
 // 他のタブで変わっていても上書きしないよう、毎回保存済みの最新を読み直してから変更を当てる
 let undoSnap = null;
@@ -1095,9 +1108,11 @@ async function reconcileExtras(){
     }
   });
   for (const [from, to] of moves){
-    try { const b = await idb.get("icons", from); if (b && !(await idb.get("icons", to))) await idb.put("icons", to, b); if (b) await idb.del("icons", from); } catch(e){}
+    for (const st of ["icons","arts"]){
+      try { const b = await idb.get(st, from); if (b && !(await idb.get(st, to))) await idb.put(st, to, b); if (b) await idb.del(st, from); } catch(e){}
+    }
   }
-  if (moves.length){ await reloadIcons(); BC?.postMessage("icons"); onData(); }
+  if (moves.length){ await reloadArtKeys(); await reloadIcons(); BC?.postMessage("icons"); onData(); }
 }
 function clean(c){
   const o = {n:c.n,a:c.a,k:c.k,nm:c.nm,r:c.r,hp:c.hp,at:c.at,df:c.df,mv:c.mv,tot:c.tot,y:c.y,own:!!c.own,src:c.src||"",like:c.like||"",made:!!c.made};
@@ -2254,6 +2269,7 @@ function openSheet(n){
     <div class="sheet-b">
       <div class="statlist">${STATS.map(([k,l])=>{const m=mOf(c,k); return `<span class="k">${l}</span><span class="pbar"><i style="width:${(m.pct*100).toFixed(1)}%"></i></span><span class="v">${esc(c[k])}</span><span class="p">${m.rank}位・${(m.pct*100).toFixed(1)}%</span><span class="g ${m.grade}">${m.grade}</span>`;}).join("")}</div>
       <div id="cropper" hidden></div>
+      <div class="artbox" id="artbox"></div>
       ${detailHTML(c)}
       ${canWrite ? noteHTML(c) : ""}
       ${canWrite ? `<form id="edform" autocomplete="off"><div class="formgrid">${fieldsHTML("ed", c)}</div>
@@ -2266,6 +2282,7 @@ function openSheet(n){
   const order = sheetOrder(); const at = order.indexOf(n);
   $("sh-prev").disabled = at <= 0; $("sh-next").disabled = at < 0 || at >= order.length - 1;
   bindNote(c);
+  showArt(n);
   if (!canWrite) return;
   if ($("ic-set")) $("ic-set").onclick = () => startCrop(c);
   if ($("ic-del")) $("ic-del").onclick = async () => {
@@ -2379,6 +2396,132 @@ async function removeIcon(n){
   if (iconURL[n]){ URL.revokeObjectURL(iconURL[n]); delete iconURL[n]; }
   BC?.postMessage("icons");
 }
+/* ---------- 立ち絵 ---------- */
+const ART_MAX = 1400;   // 長い辺の最大ピクセル
+let artKeys = new Set(), artShown = null;
+async function reloadArtKeys(){ try { artKeys = new Set((await idb.keys("arts")).map(Number)); } catch(e){ artKeys = new Set(); } }
+async function showArt(n){
+  const box = $("artbox"); if (!box || openNo !== n) return;
+  if (artShown){ URL.revokeObjectURL(artShown); artShown = null; }
+  let b = null; if (artKeys.has(n)) { try { b = await idb.get("arts", n); } catch(e){} }
+  if (openNo !== n) return;
+  const c = chars.find(x => x.n === n);
+  if (b instanceof Blob){
+    artShown = URL.createObjectURL(b);
+    box.innerHTML = `<img id="art-img" src="${artShown}" alt="${esc(c ? c.nm : "")}の立ち絵">${canWrite ? `<div class="actions"><button class="linkbtn" type="button" id="art-set">立ち絵を変更</button><button class="linkbtn del" type="button" id="art-del">立ち絵を削除</button></div>` : ""}`;
+    $("art-img").onclick = () => { const v = document.createElement("div"); v.className = "artview"; v.innerHTML = `<img src="${artShown}" alt="">`; v.onclick = () => v.remove(); document.body.appendChild(v); };
+    if ($("art-del")) $("art-del").onclick = async () => { try { await idb.del("arts", n); artKeys.delete(n); BC?.postMessage("arts"); toast("立ち絵を削除しました"); showArt(n); renderUsage(); } catch(e){ toast("削除できませんでした"); } };
+  } else box.innerHTML = canWrite ? `<button class="ghost" type="button" id="art-set">立ち絵を登録</button>` : "";
+  if ($("art-set") && c) $("art-set").onclick = () => startArtCrop(c);
+}
+function makeArt(img, r){
+  const k = Math.min(1, ART_MAX / Math.max(r.w, r.h));
+  const cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round(r.w * k)); cv.height = Math.max(1, Math.round(r.h * k));
+  const g = cv.getContext("2d"); g.imageSmoothingQuality = "high";
+  g.drawImage(img, r.x, r.y, r.w, r.h, 0, 0, cv.width, cv.height);
+  return new Promise(res => cv.toBlob(b => { if (b && b.type === "image/webp") res(b); else cv.toBlob(p => res(p), "image/jpeg", 0.88); }, "image/webp", 0.86));
+}
+function startArtCrop(c){
+  const box = $("cropper"); box.hidden = false; $("artbox").hidden = true;
+  box.innerHTML = `<div class="blk cropbox">
+    <h3 style="align-self:flex-start">立ち絵の範囲を選ぶ</h3>
+    <p class="note" style="align-self:flex-start;margin:0">ゲームの図鑑でキャラの絵を大きく表示した画面のスクショを使ってください。枠の中をドラッグで移動、角をドラッグで大きさを変えられます。枠の外をドラッグすると新しく囲み直せます。</p>
+    <label class="drop" id="ar-drop" for="ar-file" style="width:100%">スクショを選択、ドロップ、または貼り付け（Ctrl+V / ⌘V）<input type="file" id="ar-file" accept="image/*" hidden></label>
+    <canvas id="ar-cv" width="320" height="320" hidden style="touch-action:none"></canvas>
+    <div class="actions" style="margin:0"><button class="primary" type="button" id="ar-save" disabled>この範囲で保存</button><button class="ghost" type="button" id="ar-all" disabled>画像全体</button><button class="ghost" type="button" id="ar-cancel">やめる</button><span class="err" id="ar-err"></span></div>
+  </div>`;
+  let img = null, r = null, scale = 1, drag = null;
+  const cv = $("ar-cv"), g = cv.getContext("2d");
+  const W = () => img.naturalWidth, H = () => img.naturalHeight;
+  const draw = () => {
+    if (!img) return;
+    g.clearRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+    const x = r.x * scale, y = r.y * scale, w = r.w * scale, h = r.h * scale;
+    g.fillStyle = "rgba(0,0,0,.5)";
+    g.fillRect(0, 0, cv.width, y); g.fillRect(0, y + h, cv.width, cv.height - y - h); g.fillRect(0, y, x, h); g.fillRect(x + w, y, cv.width - x - w, h);
+    g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    g.fillStyle = "#fff"; for (const [px, py] of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) g.fillRect(px - 6, py - 6, 12, 12);
+  };
+  const norm = () => {
+    if (r.w < 0){ r.x += r.w; r.w = -r.w; } if (r.h < 0){ r.y += r.h; r.h = -r.h; }
+    r.x = Math.max(0, Math.min(W() - 1, r.x)); r.y = Math.max(0, Math.min(H() - 1, r.y));
+    r.w = Math.max(8, Math.min(W() - r.x, r.w)); r.h = Math.max(8, Math.min(H() - r.y, r.h));
+  };
+  const useFile = async f => {
+    if (!f || !/^image\//.test(f.type)) { $("ar-err").textContent = "画像ファイルを選んでください"; return; }
+    try { img = await loadImage(f); } catch(e){ $("ar-err").textContent = e.message; return; }
+    $("ar-err").textContent = "";
+    const maxW = Math.min(440, box.clientWidth || 320);
+    scale = Math.min(maxW / W(), 520 / H(), 1);
+    cv.width = Math.round(W() * scale); cv.height = Math.round(H() * scale);
+    r = {x: W() * 0.1, y: 0, w: W() * 0.8, h: H()}; if (W() < H()) r = {x: 0, y: 0, w: W(), h: H()};
+    cv.hidden = false; $("ar-save").disabled = false; $("ar-all").disabled = false; $("ar-drop").hidden = true;
+    draw();
+  };
+  $("ar-file").onchange = e => useFile(e.target.files[0]);
+  const dz = $("ar-drop");
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add("on"); };
+  dz.ondragleave = () => dz.classList.remove("on");
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove("on"); useFile(e.dataTransfer.files[0]); };
+  const onPaste = e => { const it = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/")); if (it){ e.preventDefault(); useFile(it.getAsFile()); } };
+  document.addEventListener("paste", onPaste);
+  $("ar-all").onclick = () => { if (!img) return; r = {x: 0, y: 0, w: W(), h: H()}; draw(); };
+  const pos = e => { const b = cv.getBoundingClientRect(), k = cv.width / b.width; return [(e.clientX - b.left) * k / scale, (e.clientY - b.top) * k / scale]; };
+  cv.onpointerdown = e => {
+    if (!img) return; cv.setPointerCapture(e.pointerId);
+    const [px, py] = pos(e), tol = 14 / scale;
+    const corners = [[r.x, r.y, "nw"], [r.x + r.w, r.y, "ne"], [r.x, r.y + r.h, "sw"], [r.x + r.w, r.y + r.h, "se"]];
+    const hit = corners.map(q => [Math.hypot(px - q[0], py - q[1]), q]).filter(([d, q]) => Math.abs(px - q[0]) <= tol && Math.abs(py - q[1]) <= tol).sort((u, v) => u[0] - v[0]).map(([, q]) => q)[0];
+    if (hit) drag = {m: "rs", c: hit[2], r0: {...r}, px, py};
+    else if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) drag = {m: "mv", r0: {...r}, px, py};
+    else { r = {x: px, y: py, w: 1, h: 1}; drag = {m: "rs", c: "se", r0: {...r}, px, py}; }
+  };
+  cv.onpointermove = e => {
+    if (!drag) return; const [px, py] = pos(e), dx = px - drag.px, dy = py - drag.py, o = drag.r0;
+    if (drag.m === "mv"){ r = {...o, x: Math.max(0, Math.min(W() - o.w, o.x + dx)), y: Math.max(0, Math.min(H() - o.h, o.y + dy))}; }
+    else {
+      let x1 = o.x, y1 = o.y, x2 = o.x + o.w, y2 = o.y + o.h;
+      if (drag.c.includes("w")) x1 += dx; else x2 += dx;
+      if (drag.c.includes("n")) y1 += dy; else y2 += dy;
+      x1 = Math.max(0, Math.min(W(), x1)); x2 = Math.max(0, Math.min(W(), x2)); y1 = Math.max(0, Math.min(H(), y1)); y2 = Math.max(0, Math.min(H(), y2));
+      r = {x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1)};
+    }
+    draw();
+  };
+  cv.onpointerup = cv.onpointercancel = () => { if (drag){ drag = null; norm(); draw(); } };
+  const close = () => { document.removeEventListener("paste", onPaste); box.hidden = true; box.innerHTML = ""; $("artbox").hidden = false; };
+  $("ar-cancel").onclick = close;
+  $("ar-save").onclick = async () => {
+    $("ar-save").disabled = true; $("ar-err").textContent = "";
+    try { norm(); const blob = await makeArt(img, r); await idb.put("arts", c.n, blob); artKeys.add(c.n); BC?.postMessage("arts"); close(); toast("立ち絵を保存しました"); showArt(c.n); renderUsage(); }
+    catch(e){ $("ar-save").disabled = false; $("ar-err").textContent = assetError(e); }
+  };
+}
+async function exportArts(){
+  const all = await idb.all("arts"), arts = {};
+  for (const [n, b] of Object.entries(all)) if (b instanceof Blob) arts[n] = await blobToDataURL(b);
+  const k = Object.keys(arts).length;
+  if (!k){ $("art-msg").textContent = "登録された立ち絵はまだありません。"; return; }
+  downloadBlob(`galanthus_arts_${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify({app: "galanthus-arts", v: 1, exportedAt: new Date().toISOString(), arts})], {type: "application/json"}));
+  $("art-msg").textContent = `立ち絵${k}枚を書き出しました。`;
+}
+const ART_RE = /^data:image\/(png|webp|jpeg);base64,([A-Za-z0-9+\/]+={0,2})$/;
+async function importArts(f){
+  const msg = $("art-msg");
+  if (f.size > 500 * 1048576){ msg.textContent = "ファイルが大きすぎます。"; return; }
+  let data; try { data = JSON.parse(await f.text()); } catch(e){ data = null; }
+  if (!data || data.app !== "galanthus-arts" || !data.arts || typeof data.arts !== "object" || Array.isArray(data.arts)){ msg.textContent = "立ち絵のバックアップとして読み込めませんでした。"; return; }
+  let ok = 0, ng = 0;
+  for (const [k, u] of Object.entries(data.arts).slice(0, 5000)){
+    const n = vNum(k), m = typeof u === "string" && u.length <= 8e6 ? ART_RE.exec(u) : null;
+    if (!isNo(n) || !m){ ng++; continue; }
+    try { const bin = atob(m[2]), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+      await idb.put("arts", n, new Blob([a], {type: "image/" + m[1]})); artKeys.add(n); ok++; }
+    catch(e){ if (e && e.name === "QuotaExceededError"){ msg.textContent = `端末の保存容量が足りなくなりました（${ok}枚まで読み込み済み）。`; BC?.postMessage("arts"); renderUsage(); return; } ng++; }
+  }
+  BC?.postMessage("arts"); renderUsage();
+  msg.textContent = `立ち絵${ok}枚を読み込みました${ng ? `（読み込めなかったもの ${ng}件）` : ""}。同じキャラの立ち絵は置き換わり、それ以外はそのまま残ります。`;
+}
 function assetError(e){
   if (e && e.name === "QuotaExceededError") return "端末の保存容量が足りません";
   const code = e && e.code;
@@ -2449,7 +2592,7 @@ async function renderUsage(){
   const n = Object.keys(iconURL).length;
   let extra = "";
   try { const e = await navigator.storage?.estimate?.(); if (e && e.usage != null) extra = `（この端末での使用量 約${(e.usage/1048576).toFixed(1)}MB）`; } catch(e){}
-  $("icusage").textContent = `登録済みのアイコン：${n}体${extra}`;
+  $("icusage").textContent = `登録済みのアイコン：${n}体・立ち絵：${artKeys.size}体${extra}`;
 }
 const normName = s => String(s||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
 async function bulkIcons(files){
@@ -2645,7 +2788,7 @@ function bindNote(c){
   sec.querySelectorAll("[data-nf]").forEach(b => b.onchange = () => save(g => { if (b.checked) g[b.dataset.nf] = 1; else delete g[b.dataset.nf]; }));
   $("nt-memo").onchange = e => save(g => { g.t = e.target.value; });
 }
-function closeSheet(){ $("sheet").hidden = true; $("scrim").hidden = true; openNo = null; }
+function closeSheet(){ $("sheet").hidden = true; $("scrim").hidden = true; openNo = null; if (artShown){ URL.revokeObjectURL(artShown); artShown = null; } }
 $("scrim").onclick = closeSheet;
 document.addEventListener("keydown", e => {
   const typing = e.target.closest?.("input, textarea, select, [contenteditable]");
@@ -2787,6 +2930,8 @@ function dataURLToBlob(u){
   try { const bin = atob(m[2]); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], {type: "image/" + m[1]}); }
   catch(e){ return null; }
 }
+$("art-export").onclick = () => exportArts().catch(() => { $("art-msg").textContent = "書き出せませんでした。"; });
+$("art-file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) importArts(f); };
 $("bk-export").onclick = async () => {
   const icons = {}; const all = await idb.all("icons");
   for (const [n, b] of Object.entries(all)) if (b instanceof Blob) icons[n] = await blobToDataURL(b);
@@ -2936,6 +3081,7 @@ async function checkRemote(manual){
     $("status").innerHTML = `<h2>データを読み込めませんでした</h2><div>通信状況を確認して、少し待ってから再読み込みしてください。</div>`;
     return;
   }
+  await reloadArtKeys();
   await reconcileExtras();
   $("icpanel").hidden = false;
   renderUsage();
@@ -2946,7 +3092,7 @@ async function checkRemote(manual){
   }
 })();
 /* ---------- Android版：新しいバージョンのお知らせ（自動で入れ替えはしない） ---------- */
-const APP_VER = "1.13.0";
+const APP_VER = "1.14.0";
 function verCmp(a, b){ const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++){ if (x[i] !== y[i]) return x[i] - y[i]; } return 0; }
 async function checkAppUpdate(){
   try {
