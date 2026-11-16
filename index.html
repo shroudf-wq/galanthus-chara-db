@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-b++TZxSZSmsJ0iMgLE2vjDIuaXm7IXWMs2bOp3q5ZDM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-Gz7Mj4nTgSxYObJfqz9E+mlc7ShBQPhV/W5EghgdIKM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -575,6 +575,12 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
         <h2>年度別<small>実装数と所持状況</small></h2>
         <div class="scroll"><table class="mini" id="t-year"></table></div>
         <div class="legend"><span><i style="background:var(--accent)"></i>所持</span><span><i style="background:var(--danger)"></i>未所持・期間限定</span><span><i style="background:var(--g-D)"></i>未所持・再入手可能</span></div>
+      </div>
+      <div class="panel">
+        <h2>期間限定<small>実装年度別</small></h2>
+        <div class="scroll"><table class="mini" id="t-lim"></table></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>所持</span><span><i style="background:var(--danger)"></i>未所持</span></div>
+        <p class="note">年度を押すと、その年の期間限定キャラを一覧で表示します。</p>
       </div>
       <div class="panel">
         <h2>未所持キャラ<small>入手先別</small></h2>
@@ -1331,6 +1337,11 @@ function renderHome(){
 $("home-new").onclick = $("home-lim").onclick = e => { const li = e.target.closest("li[data-n]"); if (li) openSheet(Number(li.dataset.n)); };
 $("home-sets").onclick = e => { const li = e.target.closest("li[data-set]"); if (!li) return; setIdx = Number(li.dataset.set) || 0; try { localStorage.setItem("galanthus-set", setIdx); } catch(err){} setView("team"); };
 $("home-sets-go").onclick = () => setView("team");
+$("t-lim").onclick = e => {
+  const tr = e.target.closest("tr[data-y]"); if (!tr) return;
+  $("reset").click();
+  F.year = tr.dataset.y; F.src = "期間限定"; buildFilters(); setView("list");
+};
 $("home-new-go").onclick = () => { F.nw = "1"; $("f-nw").value = "1"; setView("list"); };
 $("home-lim-go").onclick = () => { F.src = "期間限定"; F.own = "0"; F.cb = "no"; $("f-own").value = "0"; $("f-cb").value = "no"; buildFilters(); setView("list"); };
 $("cardlist").addEventListener("click", async e => {
@@ -2131,6 +2142,21 @@ function renderStats(){
   $("t-year").innerHTML = `<thead><tr><th>年度</th><th>実装</th><th>所持</th><th>未所持</th><th>うち期間限定</th><th>再入手可能</th><th></th></tr></thead><tbody>${rows}
     <tr class="total"><td>合計</td><td>${T.n}</td><td>${T.o}</td><td>${T.l+T.rp}</td><td>${T.l}</td><td>${T.rp}</td><td></td></tr></tbody>`;
 
+  {
+    const lim = chars.filter(c => c.src === "期間限定" && c.y), ly = [...new Set(lim.map(c => c.y))].sort((a, b) => a - b);
+    const mx = Math.max(1, ...ly.map(y => lim.filter(c => c.y === y).length));
+    const L = {n: 0, cb: 0, o: 0};
+    let r = "";
+    for (const y of ly){
+      const li = lim.filter(c => c.y === y), cb = li.filter(c => c.cb).length, o = li.filter(c => c.own).length, m = li.length - o;
+      L.n += li.length; L.cb += cb; L.o += o;
+      const w = v => (v / mx * 100).toFixed(2) + "%";
+      r += `<tr data-y="${esc(y)}" style="cursor:pointer"><td><button class="linkbtn" type="button">${esc(y)}</button></td><td>${li.length}</td><td class="${cb ? "" : "zero"}">${cb}</td><td>${o}</td><td class="${m ? "" : "zero"}">${m}</td><td>${(o / li.length * 100).toFixed(1)}%</td>
+        <td class="barcell"><div class="bar"><i class="o" style="width:${w(o)}"></i><i class="l" style="width:${w(m)}"></i></div></td></tr>`;
+    }
+    $("t-lim").innerHTML = `<thead><tr><th>年度</th><th>実装</th><th>うちコラボ</th><th>所持</th><th>未所持</th><th>所持率</th><th></th></tr></thead><tbody>${r}
+      <tr class="total"><td>合計</td><td>${L.n}</td><td>${L.cb}</td><td>${L.o}</td><td>${L.n - L.o}</td><td>${L.n ? (L.o / L.n * 100).toFixed(1) : "—"}%</td><td></td></tr></tbody>`;
+  }
   const miss = chars.filter(c=>!c.own), srcs = uniq(SRCS_BASE,"src");
   $("t-miss").innerHTML = `<thead><tr><th>入手先</th><th>未所持</th><th>実装数</th><th>所持率</th></tr></thead><tbody>` +
     srcs.map(s => { const all = chars.filter(c=>c.src===s).length, m = miss.filter(c=>c.src===s).length;
