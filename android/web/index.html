@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-L8Y9505fXqKbQCQj+2+XunhMgcgJrV5ldKmExIpB2y0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-0lsJvr4BHf6He5J1pVklB6BGIUMzF40a5iHkhAIqbaU='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Galanthus キャラDB</title>
 <meta name="description" content="キャラのステータス・評価・スキル・アビリティと自分の所持状況を管理するデータベース">
@@ -390,6 +390,14 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
 .tm-warn{margin:10px 0 0;padding:8px 10px 8px 26px;background:var(--danger-soft);color:var(--danger);border-radius:8px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
 .tm-h{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:16px 0 6px}
 .tm-eff td{vertical-align:top}
+.tm-sk td{vertical-align:top;white-space:normal}
+.tm-sk td:first-child{width:100%;overflow-wrap:anywhere}
+.tm-sk td:first-child b{display:block;font-weight:500}
+.tm-sk td:first-child summary{font-size:12px;color:var(--muted)}
+.tm-sk td:not(:first-child){white-space:nowrap}
+.tm-sk summary{cursor:pointer}
+.tag.sk-all{background:var(--danger-soft);color:var(--danger)}
+.tag.sk-single{background:var(--accent-soft);color:var(--accent)}
 .tm-eff tr.cat th{text-align:left;font-size:11px;color:var(--accent);padding-top:10px;border-bottom:1px solid var(--line)}
 .tm-eff details summary{cursor:pointer}
 .tm-items{list-style:none;margin:4px 0 6px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12px;white-space:normal}
@@ -632,6 +640,9 @@ tr.sel td.name::before,.cards-list li.sel .cl-name::before{content:"✓ ";color:
         <p class="note" style="margin:6px 0 0">フラワーメモリーは各キャラの下で1つずつ付けられます。</p>
         <div class="tm-meta" id="tm-meta"></div>
         <ul class="tm-warn" id="tm-warn" hidden></ul>
+        <h3 class="tm-h">戦闘スキル</h3>
+        <div class="scroll"><table class="mini tm-sk"><thead><tr><th>キャラ・スキル</th><th>範囲</th><th class="r">倍率・発動率</th></tr></thead><tbody id="tm-skills"></tbody></table></div>
+        <p class="note" style="margin:4px 0 0">スキルの説明文から読み取った目安です。発動率はLv5の値です。昇華済みに印を付けたキャラは昇華後のスキルで表示します。</p>
         <h3 class="tm-h">パーティ全体・敵への効果</h3>
         <div class="scroll"><table class="mini tm-eff"><thead><tr><th>効果（押すと内訳）</th><th>常時</th><th>条件付き</th></tr></thead><tbody id="tm-effects"></tbody></table></div>
         <h3 class="tm-h">自分だけにかかる効果</h3>
@@ -775,6 +786,28 @@ function stagesOf(det){
   if (!det || !det.ab || typeof det.ab !== "object") return [];
   return Object.entries(det.ab).filter(([,l]) => Array.isArray(l) && l.length && !l.every(x => /^(効果\d|なし)$/.test(x))).sort((a,b)=>STAGE_RANK(b[0])-STAGE_RANK(a[0]));
 }
+/* --- 戦闘スキルの範囲・倍率（説明文から読み取る） --- */
+const SK_KEYS = {"sk:all": "敵全体に攻撃", "sk:single": "敵単体に攻撃", "sk:multi": "敵2〜4体に攻撃", "sk:hits": "敵に連続攻撃（2回以上）", "sk:drain": "HPを吸収"};
+function skillInfo(c){
+  const det = detOf(c); const l = (det?.sk || []).filter(x => x && x.d);
+  if (!l.length) return null;
+  const sub = !!U.notes?.[c.n]?.s;
+  const base = l.filter(x => !/昇華/.test(x.l || "")), up = l.filter(x => /昇華/.test(x.l || ""));
+  const sk = (sub && up.length) ? up[up.length - 1] : (base.length ? base[base.length - 1] : l[l.length - 1]);
+  const d = String(sk.d).replace(/^[&;a-z]+/i, "").slice(0, 400);
+  let key = "single", tgt = "単体", hits = 1;
+  const mt = d.match(/敵([2-9])体/), mh = d.match(/([2-9])回/);
+  if (/敵全体/.test(d)) { key = "all"; tgt = "全体"; }
+  else if (mt) { key = "multi"; tgt = mt[1] + "体"; }
+  else if (mh) { key = "hits"; tgt = mh[1] + "回"; hits = Number(mh[1]); }
+  const nums = [...d.matchAll(/([0-9]+(?:\.[0-9]+)?)倍/g)].map(m => Number(m[1]));
+  const mult = nums.length ? Math.max(...nums) : null;
+  const mr = String(sk.r || "").match(/([0-9.]+)%\s*\(Lv5\)/), rate = mr ? Number(mr[1]) : null;
+  const ex = []; if (/吸収/.test(d)) ex.push("HP吸収"); if (/回復/.test(d)) ex.push("回復"); if (/アビリティ/.test(d)) ex.push("アビリティ変化");
+  return {nm: sk.n || "", d, key, tgt, hits, mult, var: nums.length > 1, rate, ex, sub: /昇華/.test(sk.l || "")};
+}
+function skillMult(k){ return k && k.mult != null ? (k.var ? "最大" : "") + k.mult + "倍" + (k.hits > 1 ? "×" + k.hits : "") : "—"; }
+function skillShort(k){ if (!k) return "—"; return `${k.tgt} ${skillMult(k)}`; }
 function searchText(c){
   if (c._st !== undefined) return c._st;
   const det = detOf(c); if (!det) return c._st = "";
@@ -1698,7 +1731,8 @@ function suggestTeam(presetKey, opts){
 
 /* --- 画面 --- */
 const TF = {key: "atk", owned: true, wide: true, nocond: true, q: "", preset: "boss", sattr: "", sowned: true};
-function teamEffectOptions(){ return Object.entries(EFFECTS).sort((a, b) => CAT_ORDER.indexOf(a[1][1]) - CAT_ORDER.indexOf(b[1][1])).map(([k, v]) => `<option value="${k}"${k === TF.key ? " selected" : ""}>${esc(v[1])}：${esc(v[0])}</option>`).join(""); }
+function teamEffectOptions(){ return `<optgroup label="戦闘スキル">${Object.entries(SK_KEYS).map(([k, v]) => `<option value="${k}"${k === TF.key ? " selected" : ""}>スキル：${esc(v)}</option>`).join("")}</optgroup><optgroup label="アビリティ">` + teamEffectOptionsAb() + `</optgroup>`; }
+function teamEffectOptionsAb(){ return Object.entries(EFFECTS).sort((a, b) => CAT_ORDER.indexOf(a[1][1]) - CAT_ORDER.indexOf(b[1][1])).map(([k, v]) => `<option value="${k}"${k === TF.key ? " selected" : ""}>${esc(v[1])}：${esc(v[0])}</option>`).join(""); }
 /* --- 出撃セット（4パーティ） --- */
 let setIdx = 0;
 try { setIdx = Math.max(0, Number(localStorage.getItem("galanthus-set")) || 0); } catch(e){}
@@ -1806,7 +1840,11 @@ function renderTeam(){
   }
   const attrTxt = Object.entries(s.attrs).map(([a, n]) => `<span class="attr ${esc(a)}">${esc(a)}</span>×${n}`).join("　") || "—";
   const typeTxt = Object.entries(s.types).map(([a, n]) => `${esc(a)}×${n}`).join("　") || "—";
-  $("tm-meta").innerHTML = `<span>属性：${attrTxt}</span><span>タイプ：${typeTxt}</span><span>総合力合計：<b class="num">${s.totalStat}</b></span>`;
+  const sks = s.members.map(c => c ? skillInfo(c) : null);
+  const skCnt = {}; sks.forEach(k => { if (k) skCnt[k.tgt] = (skCnt[k.tgt] || 0) + 1; });
+  const skTxt = Object.entries(skCnt).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${esc(t)}×${n}`).join("　") || "—";
+  $("tm-meta").innerHTML = `<span>属性：${attrTxt}</span><span>タイプ：${typeTxt}</span><span>スキル：${skTxt}</span><span>総合力合計：<b class="num">${s.totalStat}</b></span>`;
+  $("tm-skills").innerHTML = s.members.some(Boolean) ? s.members.map((c, i) => c ? `<tr><td><b>${esc(c.nm)}</b><details><summary>${esc(sks[i]?.nm || "—")}${sks[i]?.sub ? `<span class="tag">昇華</span>` : ""}${(sks[i]?.ex || []).map(x => `<span class="tag">${esc(x)}</span>`).join("")}</summary><small class="muted">${esc(sks[i]?.d || "")}</small></details></td><td><span class="tag sk-${esc(sks[i]?.key || "")}">${esc(sks[i]?.tgt || "—")}</span></td><td class="r num">${esc(skillMult(sks[i]))}<br><small class="muted">${sks[i]?.rate != null ? "発動率" + esc(sks[i].rate + "%") : ""}</small></td></tr>` : "").join("") : `<tr><td colspan="3" class="muted">キャラを入れると、それぞれの戦闘スキルの範囲と倍率を表示します。</td></tr>`;
   const allWarn = [...s.swarn.map(w => "【ステージ】" + w), ...s.warn];
   $("tm-warn").innerHTML = allWarn.map(w => `<li>${esc(w)}</li>`).join("");
   $("tm-warn").hidden = !allWarn.length;
@@ -1895,6 +1933,22 @@ async function teamImage(){
 function renderTeamSearch(){
   const k = TF.key; const words = knWords(TF.q);
   const res = [];
+  $("ts-wide").disabled = $("ts-nocond").disabled = k.startsWith("sk:");
+  if (k.startsWith("sk:")){
+    const want = k.slice(3);
+    for (const c of chars){
+      if (TF.owned && !c.own) continue;
+      if (words.length && !words.every(w => knName(c).includes(w))) continue;
+      const si = skillInfo(c); if (!si) continue;
+      if (want === "drain" ? !si.ex.includes("HP吸収") : si.key !== want) continue;
+      res.push({c, si, v: (si.mult || 0) * (si.hits || 1)});
+    }
+    res.sort((a, b) => b.v - a.v || (b.si.rate || 0) - (a.si.rate || 0) || a.c.n - b.c.n);
+    $("ts-count").textContent = `${res.length}体（倍率の高い順）`;
+    const inTeam = new Set(curTeam().m);
+    $("ts-list").innerHTML = res.slice(0, 60).map(({c, si}) => `<li data-n="${esc(c.n)}">${iconHTML(c)}<div class="ts-txt"><b>${esc(c.nm)}</b><small>${esc(si.nm)}${si.rate != null ? "・発動率" + esc(si.rate) + "%" : ""}：${esc(si.d)}</small></div><span class="ts-val num">${esc(skillShort(si))}</span><button class="ghost" type="button" data-add="${esc(c.n)}"${inTeam.has(c.n) ? " disabled" : ""}>${inTeam.has(c.n) ? "編成中" : "入れる"}</button></li>`).join("") || `<li class="muted">条件に合うキャラがいません。</li>`;
+    return;
+  }
   for (const c of chars){
     if (TF.owned && !c.own) continue;
     if (words.length && !words.every(w => knName(c).includes(w))) continue;
@@ -3118,7 +3172,7 @@ async function checkRemote(manual){
   }
 })();
 /* ---------- Android版：新しいバージョンのお知らせ（自動で入れ替えはしない） ---------- */
-const APP_VER = "1.15.0";
+const APP_VER = "1.16.0";
 function verCmp(a, b){ const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++){ if (x[i] !== y[i]) return x[i] - y[i]; } return 0; }
 async function checkAppUpdate(){
   try {
